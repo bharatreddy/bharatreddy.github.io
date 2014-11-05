@@ -10,12 +10,12 @@ relative_permalinks: true
 title:            Bharat Kunduri
 tagline:          'Personal Blog'
 description:      'A blog I use to share some of my projects and discuss about projects I come across.'
-url:              http://hyde.getpoole.com
+url:              
 baseurl:          /
 
 author:
-  name:           'Mark Otto'
-  url:            https://twitter.com/mdo
+  name:           'Bharat Kunduri'
+  url:            
 
 paginate:         5
 
