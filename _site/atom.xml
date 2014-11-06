@@ -4,7 +4,7 @@
  <title>Bharat Kunduri</title>
  <link href="/atom.xml" rel="self"/>
  <link href="/"/>
- <updated>2014-11-06T12:47:33-08:00</updated>
+ <updated>2014-11-06T12:50:41-08:00</updated>
  <id></id>
  <author>
    <name>Bharat Kunduri</name>
@@ -880,9 +880,9 @@ You can see, why NB is bad. The parameters are very interdependent.
  
  <entry>
    <title>Interactive visualization of space weather</title>
-   <link href="/2014/09/15/d3-dst/"/>
-   <updated>2014-09-15T00:00:00-07:00</updated>
-   <id>/2014/09/15/d3-dst</id>
+   <link href="/2014/09/10/d3-dst/"/>
+   <updated>2014-09-10T00:00:00-07:00</updated>
+   <id>/2014/09/10/d3-dst</id>
    <content type="html">&lt;p&gt;&lt;strong&gt; What is space weather? &lt;/strong&gt;&lt;/p&gt;
 
 &lt;p&gt;For those not familiar with geomagnetic storms and space weather, just like our atmospheric/terrestrial weather, space weather is the concept of changing environmental conditions in space. It also has quiet days and stormy days. One indicator of space weather is the Dst-index. The Dst-index is calculated in 1 hour intervals and lower and more negative values of Dst-index indicate disturbed and storm like space weather. For example, when the Dst-index gets to values lower than -50 nT, it is generally considered to be a stormy/disturbed day. Dst-index can fall below -150 nT for stronger geomagnetic storms.&lt;/p&gt;
