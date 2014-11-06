@@ -4,7 +4,7 @@
  <title>Bharat Kunduri</title>
  <link href="/atom.xml" rel="self"/>
  <link href="/"/>
- <updated>2014-11-05T22:49:17-08:00</updated>
+ <updated>2014-11-05T23:24:46-08:00</updated>
  <id></id>
  <author>
    <name>Bharat Kunduri</name>
@@ -848,6 +848,34 @@ You can see, why NB is bad. The parameters are very interdependent.
 &lt;span class=&quot;k&quot;&gt;print&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;quot;SVM accuracy over all test set--&amp;gt;&amp;quot;&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;n&quot;&gt;percAccrcySVM&lt;/span&gt;&lt;span class=&quot;p&quot;&gt;,&lt;/span&gt; &lt;span class=&quot;s&quot;&gt;&amp;#39;%&amp;#39;&lt;/span&gt;&lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;
 &lt;div class=&quot;highlight&quot;&gt;&lt;pre&gt;&lt;code class=&quot;language-text&quot; data-lang=&quot;text&quot;&gt;SVM accuracy over all test set--&amp;gt; 49.45 %
 &lt;/code&gt;&lt;/pre&gt;&lt;/div&gt;</content>
+ </entry>
+ 
+ <entry>
+   <title>Collection of CS algorithm questions.</title>
+   <link href="/2014/10/01/algo-qstns/"/>
+   <updated>2014-10-01T00:00:00-07:00</updated>
+   <id>/2014/10/01/algo-qstns</id>
+   <content type="html">&lt;p&gt;Below are a set of ipython notebooks which contain a collection of algorithm questions (and solutions in python) from different topics. I tried to solve these questions over time and built a collection for reference over time. The source websites for these questinos are included with the questions.&lt;/p&gt;
+
+&lt;p&gt;Note that there is a high possibility that some of the solutions are incorrect or may simply not be best solutions. Treat these as a set of practice questions and don&amp;#39;t rely on the solutions. I&amp;#39;ll be glad to fix any bugs you may find or take in suggestions.&lt;/p&gt;
+
+&lt;p&gt;Download the notebooks by &lt;a href=&quot;https://github.com/bharatreddy/giraffe/tree/master/alg&quot;&gt;visiting the project on GitHub&lt;/a&gt;.&lt;/p&gt;
+
+&lt;h2&gt;Topics&lt;/h2&gt;
+
+&lt;ul&gt;
+&lt;li&gt;&lt;a href=&quot;http://nbviewer.ipython.org/github/bharatreddy/giraffe/blob/master/alg/Part1-Recursion.ipynb&quot;&gt;Part1 - Recursion&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://nbviewer.ipython.org/github/bharatreddy/giraffe/blob/master/alg/Part2-Stacks&amp;amp;Queues.ipynb&quot;&gt;Part2 - Stacks &amp;amp; Queues&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://nbviewer.ipython.org/github/bharatreddy/giraffe/blob/master/alg/Part3-bitwise.ipynb&quot;&gt;Part3 - Bitwise&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://nbviewer.ipython.org/github/bharatreddy/giraffe/blob/master/alg/Part4-sorting&amp;amp;arrays.ipynb&quot;&gt;Part4 - sorting &amp;amp; arrays&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://nbviewer.ipython.org/github/bharatreddy/giraffe/blob/master/alg/Part5-Arrays%20%28contd..%29%20%2B%20Misc.ipynb&quot;&gt;Part5 - Arrays &amp;amp; Misc&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://nbviewer.ipython.org/github/bharatreddy/giraffe/blob/master/alg/Part6-heaps.ipynb&quot;&gt;Part6 - Heaps&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://nbviewer.ipython.org/github/bharatreddy/giraffe/blob/master/alg/Part7-Linked%20Lists.ipynb&quot;&gt;Part7 - Linked Lists&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://nbviewer.ipython.org/github/bharatreddy/giraffe/blob/master/alg/Part8-Trees.ipynb&quot;&gt;Part8 - Trees&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://nbviewer.ipython.org/github/bharatreddy/giraffe/blob/master/alg/Part9-graphs.ipynb&quot;&gt;Part9 - Graphs&lt;/a&gt;&lt;/li&gt;
+&lt;li&gt;&lt;a href=&quot;http://nbviewer.ipython.org/github/bharatreddy/giraffe/blob/master/alg/Part10-Dynamic%20Programming.ipynb&quot;&gt;Part10 - Dynamic Programming&lt;/a&gt;&lt;/li&gt;
+&lt;/ul&gt;
+</content>
  </entry>
  
 
