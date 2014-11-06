@@ -4,7 +4,7 @@
  <title>Bharat Kunduri</title>
  <link href="/atom.xml" rel="self"/>
  <link href="/"/>
- <updated>2014-11-06T12:35:11-08:00</updated>
+ <updated>2014-11-06T12:47:33-08:00</updated>
  <id></id>
  <author>
    <name>Bharat Kunduri</name>
@@ -902,8 +902,6 @@ You can see, why NB is bad. The parameters are very interdependent.
 &lt;p&gt;Currently the webapp lets you check space weather between 1985 and 2013. The app pulls in Dst-index data from the &lt;a href=&quot;http://www.mongodb.org/&quot;&gt;MongoDB&lt;/a&gt; database hosted at the &lt;a href=&quot;http://vt.superdarn.org/tiki-index.php&quot;&gt;Virginia Tech SuperDARN lab&lt;/a&gt; (thanks to AJ and Sebastien for the database) and uses &lt;a href=&quot;http://nodejs.org/&quot;&gt;node.js&lt;/a&gt; in the backend. There are options to switch years and zoom into a higher time resolution.&lt;/p&gt;
 
 &lt;p&gt;The webapp is embedded below or can be viewed &lt;a href=&quot;http://d3spaceweather.herokuapp.com/&quot;&gt;here&lt;/a&gt;&lt;/p&gt;
-
-&lt;iframe src=&quot;http://d3spaceweather.herokuapp.com/&quot; marginwidth=&quot;0&quot; marginheight=&quot;0&quot; width=&quot;800&quot; height=&quot;600&quot;&gt;&lt;/iframe&gt;
 </content>
  </entry>
  
