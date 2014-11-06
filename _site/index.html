@@ -980,27 +980,19 @@ You can see, why NB is bad. The parameters are very interdependent.
 
     <span class="post-date">10 Sep 2014</span>
 
-    <p><strong> What is space weather? </strong></p>
-
-<p>For those not familiar with geomagnetic storms and space weather, just like our atmospheric/terrestrial weather, space weather is the concept of changing environmental conditions in space. It also has quiet days and stormy days. One indicator of space weather is the Dst-index. The Dst-index is calculated in 1 hour intervals and lower and more negative values of Dst-index indicate disturbed and storm like space weather. For example, when the Dst-index gets to values lower than -50 nT, it is generally considered to be a stormy/disturbed day. Dst-index can fall below -150 nT for stronger geomagnetic storms.</p>
+    <p>For those not familiar with geomagnetic storms and space weather, just like our atmospheric/terrestrial weather, space weather is the concept of changing environmental conditions in space. It also has quiet days and stormy days. One indicator of space weather is the Dst-index. The Dst-index is calculated in 1 hour intervals and lower and more negative values of Dst-index indicate disturbed and storm like space weather. For example, when the Dst-index gets to values lower than -50 nT, it is generally considered to be a stormy/disturbed day. Dst-index can fall below -150 nT for stronger geomagnetic storms.</p>
 
 <p>Learn more about space weather <a href="http://soho.nascom.nasa.gov/spaceweather/">here</a>.</p>
 
 <p>Check out the latest Dst-index <a href="http://wdc.kugi.kyoto-u.ac.jp/dst_realtime/presentmonth/index.html">here</a>.</p>
 
-<p><strong> The problem </strong></p>
-
 <p>A little while back, me and my advisor were working on identifying geomagnetic storms that occurred between 2008 and 2013. We soon realized the necessity to have an interactive plot to easily identify such stormy days ( especially if you want to avoid coding ) on the go.</p>
-
-<p><strong> The App </strong></p>
 
 <p>One of my labmates, Sebastien, suggested (and helped on this project) using the <a href="http://d3js.org/">d3.js</a> library. The idea was to have a plot that would let you glance over an entire year&#39;s worth of data and then interactively zoom into time periods of interest. </p>
 
 <p>Currently the webapp lets you check space weather between 1985 and 2013. The app pulls in Dst-index data from the <a href="http://www.mongodb.org/">MongoDB</a> database hosted at the <a href="http://vt.superdarn.org/tiki-index.php">Virginia Tech SuperDARN lab</a> (thanks to AJ and Sebastien for the database) and uses <a href="http://nodejs.org/">node.js</a> in the backend. There are options to switch years and zoom into a higher time resolution.</p>
 
 <p>The webapp is embedded below or can be viewed <a href="http://d3spaceweather.herokuapp.com/">here</a></p>
-
-<iframe src="http://d3spaceweather.herokuapp.com/" marginwidth="0" marginheight="0" width="800" height="600"></iframe>
 
   </div>
   
