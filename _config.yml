@@ -17,7 +17,7 @@ author:
   name:           'Bharat Kunduri'
   url:            
 
-paginate:         4
+paginate:         5
 
 # Custom vars
 version:          2.1.0
@@ -27,3 +27,7 @@ github:
 
 linkedin:
   prfl:           http://www.linkedin.com/pub/bharat-kunduri/64/14a/9a0/
+
+emails:
+  vt:             mailto:bharatr@vt.edu
+  personal:       mailto:redbharat@gmail.com
