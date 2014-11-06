@@ -70,7 +70,7 @@
       <!-- <a class="sidebar-nav-item" href="https://github.com/bharatreddy/archive/v2.1.0.zip">Download</a> -->
       <a class="sidebar-nav-item" href="https://github.com/bharatreddy">GitHub</a>
       <a class="sidebar-nav-item" href="http://www.linkedin.com/pub/bharat-kunduri/64/14a/9a0/">LinkedIn</a>
-      <a class="sidebar-nav-item" href="">Email</a>
+      <a class="sidebar-nav-item" href="mailto:bharatr@vt.edu">Email</a>
       <!-- <span class="sidebar-nav-item">Currently v2.1.0</span> -->
     </nav>
 
@@ -84,63 +84,844 @@
   
   <div class="post">
     <h1 class="post-title">
-      <a href="/2014/11/05/ipl-teams/">
+      <a href="/2014/10/15/ipl-teams/">
         A simple (predictive) analysis on IPL teams
       </a>
     </h1>
 
-    <span class="post-date">05 Nov 2014</span>
+    <span class="post-date">15 Oct 2014</span>
 
-    <p>First Post</p>
+    <p>I recently stumbled across a <a href="http://cricsheet.org/">dataset</a> providing data ball-by-ball of IPL matches (2008-2014). The data is provided as <a href="http://en.wikipedia.org/wiki/YAML">YAML</a> files (one for each match) containing ball-by-ball details for each match. I transferred the data in these files into a relational database (MySQL) and made a small analysis on the performance of each team with a focus on identifying the factors influencing the performance of the teams.</p>
 
-  </div>
-  
-  <div class="post">
-    <h1 class="post-title">
-      <a href="/2013/12/28/introducing-hyde/">
-        Introducing Hyde
-      </a>
-    </h1>
+<p>I used <a href="http://pandas.pydata.org/">Pandas</a>, <a href="http://scikit-learn.org/stable/">scikit-learn</a> and <a href="matplotlib.org">matplotlib</a> for this analysis.</p>
 
-    <span class="post-date">28 Dec 2013</span>
+<h1>Building a random forest classifier to predict outcome of IPL matches.</h1>
 
-    <p>Hyde is a brazen two-column <a href="http://jekyllrb.com">Jekyll</a> theme that pairs a prominent sidebar with uncomplicated content. It&#39;s based on <a href="http://getpoole.com">Poole</a>, the Jekyll butler.</p>
+<h2>Tools used : Python (Pandas), MySQL.</h2>
 
-<h3>Built on Poole</h3>
+<p>Data source : http://cricsheet.org/</p>
 
-<p>Poole is the Jekyll Butler, serving as an upstanding and effective foundation for Jekyll themes by <a href="https://twitter.com/mdo">@mdo</a>. Poole, and every theme built on it (like Hyde here) includes the following:</p>
+<h2>Set up connections to the SQL DB.</h2>
 
-<ul>
-<li>Complete Jekyll setup included (layouts, config, <a href="/404">404</a>, <a href="/atom.xml">RSS feed</a>, posts, and <a href="/about">example page</a>)</li>
-<li>Mobile friendly design and development</li>
-<li>Easily scalable text and component sizing with <code>rem</code> units in the CSS</li>
-<li>Support for a wide gamut of HTML elements</li>
-<li>Related posts (time-based, because Jekyll) below each post</li>
-<li>Syntax highlighting, courtesy Pygments (the Python-based code snippet highlighter)</li>
-</ul>
+<p><strong>In [40]:</strong></p>
 
-<h3>Hyde features</h3>
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">pandas</span>
+<span class="kn">import</span> <span class="nn">mysql.connector</span>
+<span class="c"># set up connections to the DB</span>
+<span class="n">conn</span> <span class="o">=</span> <span class="n">mysql</span><span class="o">.</span><span class="n">connector</span><span class="o">.</span><span class="n">Connect</span><span class="p">(</span><span class="n">host</span><span class="o">=</span><span class="s">&#39;localhost&#39;</span><span class="p">,</span><span class="n">user</span><span class="o">=</span><span class="s">&#39;root&#39;</span><span class="p">,</span>\
+                        <span class="n">password</span><span class="o">=</span><span class="s">&#39;&#39;</span><span class="p">,</span><span class="n">database</span><span class="o">=</span><span class="s">&#39;cricdata&#39;</span><span class="p">)</span></code></pre></div>
 
-<p>In addition to the features of Poole, Hyde adds the following:</p>
+<h2>Retreive necessary data from the DB.</h2>
 
-<ul>
-<li>Sidebar includes support for textual modules and a dynamically generated navigation with active link support</li>
-<li>Two orientations for content and sidebar, default (left sidebar) and <a href="https://github.com/poole/lanyon#reverse-layout">reverse</a> (right sidebar), available via <code>&lt;body&gt;</code> classes</li>
-<li><a href="https://github.com/poole/hyde#themes">Eight optional color schemes</a>, available via <code>&lt;body&gt;</code> classes</li>
-</ul>
+<p><strong>In [41]:</strong></p>
 
-<p><a href="https://github.com/poole/hyde#readme">Head to the readme</a> to learn more.</p>
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c"># Retreive Data teams, Outcome data from the DB</span>
+<span class="n">qryTeamWin</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">                SELECT Game.Id, Game.MatchDate, Game.Venue, Game.Overs,</span>
+<span class="s">                    Teams.Team1, Teams.Team2,</span>
+<span class="s">                    Outcome.Winner, Outcome.Runs, Outcome.Wickets, Outcome.Result,</span>
+<span class="s">                    Outcome.Eliminator, Outcome.Method</span>
+<span class="s">                FROM Game INNER JOIN Outcome</span>
+<span class="s">                    ON Game.Id = OutCome.MatchId</span>
+<span class="s">                INNER JOIN Teams</span>
+<span class="s">                    ON Game.Id = Teams.MatchId</span>
+<span class="s">             &quot;&quot;&quot;</span>
+<span class="n">winTeamDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">read_sql</span><span class="p">(</span> <span class="n">qryTeamWin</span><span class="p">,</span> <span class="n">conn</span> <span class="p">)</span>
+<span class="c"># print a sample of the data</span>
+<span class="k">print</span> <span class="n">winTeamDF</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text">       Id           MatchDate                                       Venue  \
+0  335982 2008-04-18 00:00:00                       M Chinnaswamy Stadium   
+1  335983 2008-04-19 00:00:00  Punjab Cricket Association Stadium, Mohali   
+2  335984 2008-04-19 00:00:00                            Feroz Shah Kotla   
+3  335985 2008-04-20 00:00:00                            Wankhede Stadium   
+4  335986 2008-04-20 00:00:00                                Eden Gardens   
 
-<h3>Browser support</h3>
+   Overs                        Team1                        Team2  \
+0     20  Royal Challengers Bangalore        Kolkata Knight Riders   
+1     20              Kings XI Punjab          Chennai Super Kings   
+2     20             Delhi Daredevils             Rajasthan Royals   
+3     20               Mumbai Indians  Royal Challengers Bangalore   
+4     20        Kolkata Knight Riders              Deccan Chargers   
 
-<p>Hyde is by preference a forward-thinking project. In addition to the latest versions of Chrome, Safari (mobile and desktop), and Firefox, it is only compatible with Internet Explorer 9 and above.</p>
+                        Winner  Runs  Wickets Result Eliminator Method  
+0        Kolkata Knight Riders   140      NaN   None       None   None  
+1          Chennai Super Kings    33      NaN   None       None   None  
+2             Delhi Daredevils   NaN        9   None       None   None  
+3  Royal Challengers Bangalore   NaN        5   None       None   None  
+4        Kolkata Knight Riders   NaN        5   None       None   None  
+</code></pre></div>
+<h2>Get some basic stats - win/loss percentage by team.</h2>
 
-<h3>Download</h3>
+<p><strong>In [42]:</strong></p>
 
-<p>Hyde is developed on and hosted with GitHub. Head to the <a href="https://github.com/poole/hyde">GitHub repository</a> for downloads, bug reports, and features requests.</p>
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="c"># We&#39;ll begin with the win/loss percent of teams.</span>
+<span class="c"># get the matches won/lost by each team.</span>
+<span class="c"># By grouping the DF according to the winning team.</span>
+<span class="n">bywinner</span> <span class="o">=</span> <span class="n">winTeamDF</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">&#39;Winner&#39;</span><span class="p">)</span>
+<span class="n">numWins</span> <span class="o">=</span> <span class="n">bywinner</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+<span class="c"># Now we&#39;ll need the total number of matches</span>
+<span class="c"># played by each team. </span>
+<span class="n">teamList</span> <span class="o">=</span> <span class="n">bywinner</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="c"># Loop through each team and identify the number of times</span>
+<span class="c"># the team appears either in the Team1 or Team2 col.</span>
+<span class="c"># we&#39;ll store this data in a seperate DF</span>
+<span class="n">teamMatchDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span> <span class="n">columns</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;team&#39;</span><span class="p">,</span> <span class="s">&#39;short_name&#39;</span><span class="p">,</span><span class="s">&#39;matches&#39;</span><span class="p">,</span> <span class="s">&#39;wins&#39;</span><span class="p">),</span>\
+                               <span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">teamList</span><span class="p">))</span> <span class="p">)</span>
+<span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">teamList</span><span class="p">):</span>
+    <span class="n">nGames</span> <span class="o">=</span> <span class="n">winTeamDF</span><span class="p">[</span> <span class="p">(</span><span class="n">winTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">winTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c"># get the short name for plotting purposes</span>
+    <span class="n">shortName</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="p">[</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">t</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="p">]</span> <span class="p">)</span>
+    <span class="n">teamMatchDF</span><span class="o">.</span><span class="n">ix</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span> <span class="n">t</span><span class="p">,</span> <span class="n">shortName</span><span class="p">,</span> <span class="n">nGames</span><span class="p">,</span> <span class="n">numWins</span><span class="p">[</span><span class="n">t</span><span class="p">]</span> <span class="p">]</span>
+<span class="c"># We now have the DF with team, num of matches and wins</span>
+<span class="c"># we&#39;ll now add an additional column win_percent</span>
+<span class="n">teamMatchDF</span><span class="p">[</span><span class="s">&#39;win_percent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">teamMatchDF</span><span class="p">[</span><span class="s">&#39;wins&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">teamMatchDF</span><span class="p">[</span><span class="s">&#39;matches&#39;</span><span class="p">])</span>\
+                                <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="k">print</span> <span class="s">&quot;--------------- Total team wins ------------------&quot;</span>
+<span class="k">print</span> <span class="n">teamMatchDF</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span> <span class="s">&#39;win_percent&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span> <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span>
+<span class="k">print</span> <span class="s">&quot;--------------- Total team wins ------------------&quot;</span>
+<span class="c"># Lets get the wins of each team by year</span>
+<span class="c"># we&#39;ll get the year from the MatchDate col</span>
+<span class="n">winTeamDF</span><span class="p">[</span><span class="s">&#39;year&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DatetimeIndex</span><span class="p">(</span> <span class="n">winTeamDF</span><span class="p">[</span><span class="s">&#39;MatchDate&#39;</span><span class="p">]</span> <span class="p">)</span><span class="o">.</span><span class="n">year</span>
+<span class="n">byYearWinner</span> <span class="o">=</span> <span class="n">winTeamDF</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span> <span class="p">[</span><span class="s">&#39;Winner&#39;</span><span class="p">,</span><span class="s">&#39;year&#39;</span><span class="p">]</span> <span class="p">)</span>
+<span class="n">numWinsYear</span> <span class="o">=</span> <span class="n">byYearWinner</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+<span class="c"># we&#39;ll use a different DF to store wins by year.</span>
+<span class="n">teamYearList</span> <span class="o">=</span> <span class="n">byYearWinner</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="n">teamWinYearDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span> <span class="n">columns</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;team&#39;</span><span class="p">,</span> <span class="s">&#39;short_name&#39;</span><span class="p">,</span> <span class="s">&#39;year&#39;</span><span class="p">,</span> <span class="s">&#39;matches&#39;</span><span class="p">,</span> <span class="s">&#39;wins&#39;</span><span class="p">),</span>\
+                               <span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">teamYearList</span><span class="p">))</span> <span class="p">)</span>
+<span class="c"># Loop through the data populate the DB</span>
+<span class="k">for</span> <span class="n">ny</span><span class="p">,</span> <span class="n">ty</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">teamYearList</span><span class="p">):</span>
+    <span class="c"># skip some None&#39;s</span>
+    <span class="k">if</span> <span class="n">ty</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">continue</span>
+    <span class="n">nGames</span> <span class="o">=</span> <span class="n">winTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">winTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ty</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">winTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ty</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">winTeamDF</span><span class="p">[</span><span class="s">&#39;year&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ty</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">shortName</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="p">[</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">ty</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="p">]</span> <span class="p">)</span>
+    <span class="n">teamWinYearDF</span><span class="o">.</span><span class="n">ix</span><span class="p">[</span><span class="n">ny</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span> <span class="n">ty</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">shortName</span><span class="p">,</span> <span class="n">ty</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">nGames</span><span class="p">,</span> <span class="n">numWinsYear</span><span class="p">[</span><span class="n">ty</span><span class="p">]</span> <span class="p">]</span>
+<span class="c"># get the win percent</span>
+<span class="k">print</span> 
+<span class="k">print</span> <span class="s">&quot;--------------- Team wins by year ------------------&quot;</span>
+<span class="n">teamWinYearDF</span><span class="p">[</span><span class="s">&#39;win_percent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">teamWinYearDF</span><span class="p">[</span><span class="s">&#39;wins&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">teamWinYearDF</span><span class="p">[</span><span class="s">&#39;matches&#39;</span><span class="p">])</span>\
+                                <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="c"># Drop NaN Vals</span>
+<span class="n">teamWinYearDF</span> <span class="o">=</span> <span class="n">teamWinYearDF</span><span class="p">[</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span> <span class="n">teamWinYearDF</span><span class="p">[</span><span class="s">&#39;win_percent&#39;</span><span class="p">]</span> <span class="p">)</span> <span class="p">]</span>
+<span class="k">print</span> <span class="n">teamWinYearDF</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span> <span class="s">&#39;win_percent&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span> <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="k">print</span> <span class="s">&quot;--------------- Team wins by year ------------------&quot;</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text">--------------- Total team wins ------------------
+                           team short_name matches wins  win_percent
+0           Chennai Super Kings        CSK     114   69        60.53
+1                Mumbai Indians         MI     110   63        57.27
+2              Rajasthan Royals         RR     104   54        51.92
+3               Kings XI Punjab        KXP     106   55        51.89
+4         Kolkata Knight Riders        KKR     104   53        50.96
+5   Royal Challengers Bangalore        RCB     107   52        48.60
+6           Sunrisers Hyderabad         SH      31   15        48.39
+7          Kochi Tuskers Kerala        KTK      14    6        42.86
+8              Delhi Daredevils         DD     105   44        41.90
+9               Deccan Chargers         DC      75   29        38.67
+10                Pune Warriors         PW      46   12        26.09
+--------------- Total team wins ------------------
 
-<p>Thanks!</p>
+--------------- Team wins by year ------------------
+                    team short_name  year matches wins  win_percent
+0       Rajasthan Royals         RR  2008      16   13        81.25
+1        Kings XI Punjab        KXP  2014      17   12        70.59
+2  Kolkata Knight Riders        KKR  2012      17   12        70.59
+3  Kolkata Knight Riders        KKR  2014      16   11        68.75
+4    Chennai Super Kings        CSK  2011      16   11        68.75
+5         Mumbai Indians         MI  2010      16   11        68.75
+6         Mumbai Indians         MI  2013      19   13        68.42
+7        Kings XI Punjab        KXP  2008      15   10        66.67
+8    Chennai Super Kings        CSK  2013      18   12        66.67
+9       Delhi Daredevils         DD  2009      15   10        66.67
+--------------- Team wins by year ------------------
+</code></pre></div>
+<h2>Plot of win% of teams over all years.</h2>
 
+<p><strong>In [43]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">matplotlib.pyplot</span> <span class="kn">as</span> <span class="nn">plt</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+<span class="n">ax1</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+<span class="c"># plot total team wins</span>
+<span class="n">ax1</span> <span class="o">=</span> <span class="n">teamMatchDF</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x</span><span class="o">=</span><span class="s">&#39;short_name&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="s">&#39;win_percent&#39;</span><span class="p">,</span> <span class="n">kind</span><span class="o">=</span><span class="s">&#39;bar&#39;</span><span class="p">,</span>\
+                 <span class="n">ylim</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">100</span><span class="p">],</span> <span class="n">fontsize</span> <span class="o">=</span> <span class="mi">14</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;#1E90FF&#39;</span> <span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span> <span class="s">&#39;Win Percent&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span> <span class="p">)</span>
+<span class="n">yticks</span> <span class="o">=</span> <span class="p">[</span><span class="mi">20</span><span class="p">,</span> <span class="mi">40</span><span class="p">,</span> <span class="mi">60</span><span class="p">,</span> <span class="mi">80</span><span class="p">,</span> <span class="mi">100</span><span class="p">]</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">set_ticks</span><span class="p">(</span><span class="n">yticks</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_yticklabels</span><span class="p">(</span><span class="n">yticks</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span> <span class="s">&#39;Team&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span> <span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span> <span class="s">&#39;Win percent by teams&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span> <span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s">&#39;gray&#39;</span><span class="p">)</span>
+<span class="n">ax1</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_alpha</span><span class="p">(</span><span class="mf">0.75</span><span class="p">)</span></code></pre></div>
+
+<p><img src="/public/team-analysis_files/team-analysis_8_0.png" alt="png"></p>
+
+<h2>Win% of teams by year - consistency.</h2>
+
+<p><strong>In [44]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+<span class="n">ax2</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+<span class="c"># Set different colors</span>
+<span class="n">colormap</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">cm</span><span class="o">.</span><span class="n">jet</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">gca</span><span class="p">()</span><span class="o">.</span><span class="n">set_color_cycle</span><span class="p">([</span><span class="n">colormap</span><span class="p">(</span><span class="n">i</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="n">np</span><span class="o">.</span><span class="n">linspace</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.9</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">teamList</span><span class="p">))])</span>
+<span class="n">labList</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">meanList</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">stdList</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">xDataList</span> <span class="o">=</span> <span class="p">[]</span> <span class="c"># Holder for xaxis</span>
+<span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">teamList</span><span class="p">):</span>
+    <span class="n">currYears</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span> <span class="n">teamWinYearDF</span><span class="p">[</span> <span class="n">teamWinYearDF</span><span class="p">[</span><span class="s">&#39;team&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">][</span><span class="s">&#39;year&#39;</span><span class="p">]</span> <span class="p">)</span>
+    <span class="n">shortName</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span> <span class="n">teamWinYearDF</span><span class="p">[</span> <span class="n">teamWinYearDF</span><span class="p">[</span><span class="s">&#39;team&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">][</span><span class="s">&#39;short_name&#39;</span><span class="p">]</span> <span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">currDate</span> <span class="o">=</span> <span class="p">[</span> <span class="n">datetime</span><span class="o">.</span><span class="n">datetime</span><span class="o">.</span><span class="n">strptime</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">c</span><span class="p">),</span> <span class="s">&#39;%Y&#39;</span><span class="p">)</span> <span class="k">for</span>  <span class="n">c</span> <span class="ow">in</span> <span class="n">currYears</span> <span class="p">]</span>
+    <span class="c"># Need to sort both date and win_percent according to date</span>
+    <span class="c"># We&#39;ll do it by zipping the values</span>
+    <span class="n">currWinPercnt</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span> <span class="n">teamWinYearDF</span><span class="p">[</span> <span class="n">teamWinYearDF</span><span class="p">[</span><span class="s">&#39;team&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">][</span><span class="s">&#39;win_percent&#39;</span><span class="p">]</span> <span class="p">)</span>
+    <span class="n">wdSort</span> <span class="o">=</span> <span class="nb">zip</span><span class="p">(</span> <span class="n">currDate</span><span class="p">,</span> <span class="n">currWinPercnt</span> <span class="p">)</span>
+    <span class="n">wdSort</span><span class="o">.</span><span class="n">sort</span><span class="p">()</span>
+    <span class="n">currDate</span> <span class="o">=</span> <span class="p">[</span><span class="n">y</span> <span class="k">for</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">wdSort</span><span class="p">]</span>
+    <span class="n">currWinPercnt</span> <span class="o">=</span> <span class="p">[</span><span class="n">x</span> <span class="k">for</span> <span class="n">y</span><span class="p">,</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">wdSort</span><span class="p">]</span>
+    <span class="n">stats</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">array</span><span class="p">(</span> <span class="n">currWinPercnt</span> <span class="p">)</span>
+    <span class="n">labList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">shortName</span> <span class="p">)</span>
+    <span class="n">meanList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">numpy</span><span class="o">.</span><span class="n">mean</span><span class="p">(</span><span class="n">stats</span><span class="p">)</span> <span class="p">)</span>
+    <span class="n">stdList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">numpy</span><span class="o">.</span><span class="n">std</span><span class="p">(</span><span class="n">stats</span><span class="p">)</span> <span class="p">)</span>
+    <span class="n">xDataList</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">n</span> <span class="p">)</span>
+<span class="c"># Plot the means, Std.Dev</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">errorbar</span><span class="p">(</span><span class="n">xDataList</span><span class="p">,</span> <span class="n">meanList</span><span class="p">,</span> <span class="n">yerr</span><span class="o">=</span><span class="n">stdList</span><span class="p">,</span>\
+             <span class="n">linestyle</span><span class="o">=</span><span class="s">&#39;None&#39;</span><span class="p">,</span> <span class="n">marker</span><span class="o">=</span><span class="s">&#39;x&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> \
+             <span class="n">markersize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">mew</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s">&#39;#1E90FF&#39;</span><span class="p">)</span>
+<span class="c">#     ax2.plot( currDate, currWinPercnt, linewidth=2, label=t )</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span> <span class="s">&#39;Win Percent&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span> <span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span> <span class="s">&#39;Team&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span> <span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span> <span class="s">&#39;Avg wins/year&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span> <span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">100</span><span class="p">]</span> <span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span> <span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span><span class="mi">11</span><span class="p">]</span> <span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">set_ticks</span><span class="p">(</span><span class="n">arange</span><span class="p">(</span><span class="mi">11</span><span class="p">))</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">labList</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s">&#39;y&#39;</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s">&#39;gray&#39;</span><span class="p">)</span>
+<span class="n">ax2</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_alpha</span><span class="p">(</span><span class="mf">0.75</span><span class="p">)</span></code></pre></div>
+
+<p><img src="/public/team-analysis_files/team-analysis_10_0.png" alt="png"></p>
+
+<h2>Performance by Venues - Home Advantage.</h2>
+
+<p><strong>In [45]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">byVenueWinner</span> <span class="o">=</span> <span class="n">winTeamDF</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span> <span class="p">[</span><span class="s">&#39;Winner&#39;</span><span class="p">,</span><span class="s">&#39;Venue&#39;</span><span class="p">]</span> <span class="p">)</span>
+<span class="n">numWinsVenue</span> <span class="o">=</span> <span class="n">byVenueWinner</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+<span class="c"># we&#39;ll use a different DF to store wins by year.</span>
+<span class="n">teamVenueList</span> <span class="o">=</span> <span class="n">byVenueWinner</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="n">teamWinVenueDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span> <span class="n">columns</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;team&#39;</span><span class="p">,</span> <span class="s">&#39;short_name&#39;</span><span class="p">,</span> <span class="s">&#39;venue&#39;</span><span class="p">,</span> <span class="s">&#39;matches&#39;</span><span class="p">,</span> <span class="s">&#39;wins&#39;</span><span class="p">),</span>\
+                               <span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">teamVenueList</span><span class="p">))</span> <span class="p">)</span>
+<span class="c"># we&#39;ll have a DF to just store home results (automatically identified by num matches)</span>
+<span class="n">homeAdvDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span> <span class="n">columns</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;team&#39;</span><span class="p">,</span> <span class="s">&#39;home_venue&#39;</span><span class="p">,</span> <span class="s">&#39;home_matches&#39;</span><span class="p">,</span> <span class="s">&#39;home_wins&#39;</span><span class="p">),</span>\
+                               <span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">teamVenueList</span><span class="p">))</span> <span class="p">)</span>
+<span class="c"># Loop through the data populate the DB</span>
+<span class="k">for</span> <span class="n">ny</span><span class="p">,</span> <span class="n">ty</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">teamVenueList</span><span class="p">):</span>
+    <span class="c"># skip some None&#39;s</span>
+    <span class="k">if</span> <span class="n">ty</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="bp">None</span><span class="p">:</span>
+        <span class="k">continue</span>
+    <span class="n">nGames</span> <span class="o">=</span> <span class="n">winTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">winTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ty</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">winTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ty</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">winTeamDF</span><span class="p">[</span><span class="s">&#39;Venue&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">ty</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span> <span class="p">)]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">shortName</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="p">[</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">ty</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="p">]</span> <span class="p">)</span>
+    <span class="n">teamWinVenueDF</span><span class="o">.</span><span class="n">ix</span><span class="p">[</span><span class="n">ny</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span> <span class="n">ty</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">shortName</span><span class="p">,</span> <span class="n">ty</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">nGames</span><span class="p">,</span> <span class="n">numWinsVenue</span><span class="p">[</span><span class="n">ty</span><span class="p">]</span> <span class="p">]</span>
+    <span class="c"># Get the home adv factor</span>
+    <span class="k">if</span> <span class="n">nGames</span> <span class="o">&gt;</span> <span class="mi">10</span><span class="p">:</span>
+        <span class="n">homeAdvDF</span><span class="o">.</span><span class="n">ix</span><span class="p">[</span><span class="n">ny</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span> <span class="n">ty</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">ty</span><span class="p">[</span><span class="mi">1</span><span class="p">],</span> <span class="n">nGames</span><span class="p">,</span> <span class="n">numWinsVenue</span><span class="p">[</span><span class="n">ty</span><span class="p">]</span> <span class="p">]</span>
+<span class="c"># get the win percent</span>
+<span class="n">teamWinVenueDF</span><span class="p">[</span><span class="s">&#39;win_percent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">teamWinVenueDF</span><span class="p">[</span><span class="s">&#39;wins&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">teamWinVenueDF</span><span class="p">[</span><span class="s">&#39;matches&#39;</span><span class="p">])</span>\
+                                <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="n">homeAdvDF</span><span class="p">[</span><span class="s">&#39;home_win_percent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">homeAdvDF</span><span class="p">[</span><span class="s">&#39;home_wins&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">homeAdvDF</span><span class="p">[</span><span class="s">&#39;home_matches&#39;</span><span class="p">])</span>\
+                                <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="c"># Drop NaN Vals</span>
+<span class="n">teamWinVenueDF</span> <span class="o">=</span> <span class="n">teamWinVenueDF</span><span class="p">[</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span> <span class="n">teamWinVenueDF</span><span class="p">[</span><span class="s">&#39;win_percent&#39;</span><span class="p">]</span> <span class="p">)</span> <span class="p">]</span>
+<span class="n">homeAdvDF</span> <span class="o">=</span> <span class="n">homeAdvDF</span><span class="p">[</span> <span class="n">numpy</span><span class="o">.</span><span class="n">isfinite</span><span class="p">(</span> <span class="n">homeAdvDF</span><span class="p">[</span><span class="s">&#39;home_win_percent&#39;</span><span class="p">]</span> <span class="p">)</span> <span class="p">]</span>
+<span class="c"># Now let&#39;s get the away wins as well by merging this DF</span>
+<span class="c"># with the DF containing all wins (teamMatchDF)</span>
+<span class="n">homeAwayDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span> <span class="n">pandas</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">teamMatchDF</span><span class="p">,</span> <span class="n">homeAdvDF</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="s">&#39;team&#39;</span><span class="p">,</span> <span class="n">how</span><span class="o">=</span><span class="s">&#39;inner&#39;</span><span class="p">)</span> <span class="p">)</span>
+<span class="c"># Get Away matches and wins and %wins</span>
+<span class="n">homeAwayDF</span><span class="p">[</span><span class="s">&#39;away_matches&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">homeAwayDF</span><span class="p">[</span><span class="s">&#39;matches&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">homeAwayDF</span><span class="p">[</span><span class="s">&#39;home_matches&#39;</span><span class="p">]</span>
+<span class="n">homeAwayDF</span><span class="p">[</span><span class="s">&#39;away_wins&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">homeAwayDF</span><span class="p">[</span><span class="s">&#39;wins&#39;</span><span class="p">]</span> <span class="o">-</span> <span class="n">homeAwayDF</span><span class="p">[</span><span class="s">&#39;home_wins&#39;</span><span class="p">]</span>
+<span class="n">homeAwayDF</span><span class="p">[</span><span class="s">&#39;away_win_percent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">homeAwayDF</span><span class="p">[</span><span class="s">&#39;away_wins&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">homeAwayDF</span><span class="p">[</span><span class="s">&#39;away_matches&#39;</span><span class="p">])</span>\
+                                <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="k">print</span> <span class="s">&quot;--------------- Home/Away team wins ------------------&quot;</span>
+<span class="k">print</span> <span class="n">homeAwayDF</span><span class="o">.</span><span class="n">sort</span><span class="p">(</span> <span class="s">&#39;win_percent&#39;</span><span class="p">,</span> <span class="n">ascending</span><span class="o">=</span><span class="bp">False</span> <span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="bp">True</span><span class="p">)</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">10</span><span class="p">)</span>
+<span class="k">print</span> <span class="s">&quot;--------------- Home/Away team wins ------------------&quot;</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text">--------------- Home/Away team wins ------------------
+                          team short_name matches wins  win_percent  \
+0          Chennai Super Kings        CSK     114   69        60.53   
+1               Mumbai Indians         MI     110   63        57.27   
+2             Rajasthan Royals         RR     104   54        51.92   
+3              Kings XI Punjab        KXP     106   55        51.89   
+4        Kolkata Knight Riders        KKR     104   53        50.96   
+5  Royal Challengers Bangalore        RCB     107   52        48.60   
+6          Sunrisers Hyderabad         SH      31   15        48.39   
+7             Delhi Daredevils         DD     105   44        41.90   
+8              Deccan Chargers         DC      75   29        38.67   
+9                Pune Warriors         PW      46   12        26.09   
+
+                                   home_venue home_matches home_wins  \
+0             MA Chidambaram Stadium, Chepauk           40        27   
+1                            Wankhede Stadium           33        22   
+2                      Sawai Mansingh Stadium           33        24   
+3  Punjab Cricket Association Stadium, Mohali           31        17   
+4                                Eden Gardens           38        24   
+5                       M Chinnaswamy Stadium           40        21   
+6   Rajiv Gandhi International Stadium, Uppal           12         7   
+7                            Feroz Shah Kotla           39        14   
+8   Rajiv Gandhi International Stadium, Uppal           18         3   
+9                  Subrata Roy Sahara Stadium           16         4   
+
+   home_win_percent away_matches away_wins  away_win_percent  
+0             67.50           74        42             56.76  
+1             66.67           77        41             53.25  
+2             72.73           71        30             42.25  
+3             54.84           75        38             50.67  
+4             63.16           66        29             43.94  
+5             52.50           67        31             46.27  
+6             58.33           19         8             42.11  
+7             35.90           66        30             45.45  
+8             16.67           57        26             45.61  
+9             25.00           30         8             26.67  
+--------------- Home/Away team wins ------------------
+</code></pre></div>
+<h2>Home/Away win% plots.</h2>
+
+<p><strong>In [46]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">plotDF2</span> <span class="o">=</span> <span class="n">homeAwayDF</span><span class="p">[</span> <span class="p">[</span><span class="s">&#39;short_name&#39;</span><span class="p">,</span> <span class="s">&#39;win_percent&#39;</span><span class="p">,</span><span class="s">&#39;home_win_percent&#39;</span><span class="p">,</span> <span class="s">&#39;away_win_percent&#39;</span> <span class="p">]</span> <span class="p">]</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+<span class="c"># plot total team wins</span>
+<span class="n">plotDF2</span><span class="p">[[</span><span class="s">&#39;win_percent&#39;</span><span class="p">,</span><span class="s">&#39;home_win_percent&#39;</span><span class="p">,</span> <span class="s">&#39;away_win_percent&#39;</span><span class="p">]]</span><span class="o">.</span>\
+                                                    <span class="n">plot</span><span class="p">(</span> <span class="n">kind</span><span class="o">=</span><span class="s">&#39;bar&#39;</span><span class="p">,</span> <span class="n">use_index</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>\
+                                                       <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.75</span><span class="p">,</span>\
+                                                       <span class="n">grid</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;#1E90FF&#39;</span><span class="p">,</span><span class="s">&#39;#DC143C&#39;</span><span class="p">,</span><span class="s">&#39;green&#39;</span><span class="p">])</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span> <span class="s">&#39;Team&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span> <span class="s">&#39;Win Percent&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span> <span class="s">&#39;Home/Away Win percent by teams&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">100</span><span class="p">]</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">homeAwayDF</span><span class="p">[</span><span class="s">&#39;short_name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s">&#39;y&#39;</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s">&#39;gray&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_alpha</span><span class="p">(</span><span class="mf">0.75</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span> <span class="c">#vertical lines</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span> <span class="c">#horizontal lines</span></code></pre></div>
+
+<p><img src="/public/team-analysis_files/team-analysis_14_0.png" alt="png"></p>
+
+<h2>Influence of toss.</h2>
+
+<p><strong>In [47]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c"># Need a new query, retreive the toss data as well.</span>
+<span class="n">qryTeamToss</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">                SELECT Game.Id, Game.MatchDate, Game.Venue, Game.Overs,</span>
+<span class="s">                    Teams.Team1, Teams.Team2,</span>
+<span class="s">                    Outcome.Winner, Outcome.Runs, Outcome.Wickets, Outcome.Result,</span>
+<span class="s">                    Toss.Decision as tossDec, Toss.Winner as tossWin</span>
+<span class="s">                FROM Game INNER JOIN Outcome</span>
+<span class="s">                    ON Game.Id = OutCome.MatchId</span>
+<span class="s">                INNER JOIN Teams</span>
+<span class="s">                    ON Game.Id = Teams.MatchId</span>
+<span class="s">                INNER JOIN Toss</span>
+<span class="s">                    ON Game.Id = Toss.MatchId</span>
+<span class="s">             &quot;&quot;&quot;</span>
+<span class="n">tossTeamDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">read_sql</span><span class="p">(</span> <span class="n">qryTeamToss</span><span class="p">,</span> <span class="n">conn</span> <span class="p">)</span>
+<span class="c"># print a sample of the data</span>
+<span class="k">print</span> <span class="n">tossTeamDF</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text">       Id           MatchDate                                       Venue  \
+0  335982 2008-04-18 00:00:00                       M Chinnaswamy Stadium   
+1  335983 2008-04-19 00:00:00  Punjab Cricket Association Stadium, Mohali   
+2  335984 2008-04-19 00:00:00                            Feroz Shah Kotla   
+3  335985 2008-04-20 00:00:00                            Wankhede Stadium   
+4  335986 2008-04-20 00:00:00                                Eden Gardens   
+
+   Overs                        Team1                        Team2  \
+0     20  Royal Challengers Bangalore        Kolkata Knight Riders   
+1     20              Kings XI Punjab          Chennai Super Kings   
+2     20             Delhi Daredevils             Rajasthan Royals   
+3     20               Mumbai Indians  Royal Challengers Bangalore   
+4     20        Kolkata Knight Riders              Deccan Chargers   
+
+                        Winner  Runs  Wickets Result tossDec  \
+0        Kolkata Knight Riders   140      NaN   None   field   
+1          Chennai Super Kings    33      NaN   None     bat   
+2             Delhi Daredevils   NaN        9   None     bat   
+3  Royal Challengers Bangalore   NaN        5   None     bat   
+4        Kolkata Knight Riders   NaN        5   None     bat   
+
+                       tossWin  
+0  Royal Challengers Bangalore  
+1          Chennai Super Kings  
+2             Rajasthan Royals  
+3               Mumbai Indians  
+4              Deccan Chargers  
+</code></pre></div>
+<p><strong>In [48]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="c"># We&#39;ll look at win/loss percent of teams as a function of toss.</span>
+<span class="c"># get the matches won/lost by each team.</span>
+<span class="c"># By grouping the DF according to the winning team.</span>
+<span class="n">bywin</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">&#39;Winner&#39;</span><span class="p">)</span>
+<span class="n">numWins</span> <span class="o">=</span> <span class="n">bywin</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+<span class="c"># Now we&#39;ll need the total number of matches</span>
+<span class="c"># played by each team. </span>
+<span class="n">teamList</span> <span class="o">=</span> <span class="n">bywin</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="c"># Loop through each team and identify the number of times</span>
+<span class="c"># the team appears either in the Team1 or Team2 col.</span>
+<span class="c"># we&#39;ll store this data in a seperate DF</span>
+<span class="n">teamTossWinDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span> <span class="n">columns</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;team&#39;</span><span class="p">,</span> <span class="s">&#39;short_name&#39;</span><span class="p">,</span><span class="s">&#39;matches&#39;</span><span class="p">,</span> <span class="s">&#39;wins&#39;</span><span class="p">,</span> <span class="s">&#39;toss&#39;</span><span class="p">,</span> <span class="s">&#39;toss_wins&#39;</span><span class="p">),</span>\
+                               <span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">teamList</span><span class="p">))</span> <span class="p">)</span>
+<span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">teamList</span><span class="p">):</span>
+    <span class="n">nGames</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c"># num of times the team won toss</span>
+    <span class="n">nToss</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossWin&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c"># num of times the team won the match after winning toss</span>
+    <span class="n">nTossWins</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossWin&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">)</span> \
+                       <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Winner&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">shortName</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="p">[</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">t</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="p">]</span> <span class="p">)</span>
+    <span class="n">teamTossWinDF</span><span class="o">.</span><span class="n">ix</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span> <span class="n">t</span><span class="p">,</span> <span class="n">shortName</span><span class="p">,</span> <span class="n">nGames</span><span class="p">,</span> <span class="n">numWins</span><span class="p">[</span><span class="n">t</span><span class="p">],</span> <span class="n">nToss</span><span class="p">,</span> <span class="n">nTossWins</span> <span class="p">]</span>
+<span class="c"># Calculate the general win %</span>
+<span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;win_percent&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;wins&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;matches&#39;</span><span class="p">])</span>\
+                                <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="c"># Calculate the win % after winning/loosing toss</span>
+<span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;win_percent/win_toss&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;toss_wins&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;toss&#39;</span><span class="p">])</span>\
+                                <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;win_percent/loose_toss&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span> <span class="p">(</span> <span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;wins&#39;</span><span class="p">]</span><span class="o">-</span><span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;toss_wins&#39;</span><span class="p">]</span> <span class="p">)</span>\
+                                         <span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="p">(</span><span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;matches&#39;</span><span class="p">]</span><span class="o">-</span><span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;toss&#39;</span><span class="p">])</span> <span class="p">)</span>\
+                                <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="k">print</span> <span class="n">teamTossWinDF</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text">                           team short_name matches wins toss toss_wins  \
+0   Royal Challengers Bangalore        RCB     107   52   45        22   
+1         Kolkata Knight Riders        KKR     104   53   55        29   
+2           Chennai Super Kings        CSK     114   69   56        37   
+3          Kochi Tuskers Kerala        KTK      14    6    8         4   
+4               Kings XI Punjab        KXP     106   55   51        25   
+5              Delhi Daredevils         DD     105   44   51        21   
+6               Deccan Chargers         DC      75   29   43        19   
+7           Sunrisers Hyderabad         SH      31   15   14         4   
+8              Rajasthan Royals         RR     104   54   57        30   
+9                 Pune Warriors         PW      46   12   20         3   
+10               Mumbai Indians         MI     110   63   58        33   
+
+    win_percent  win_percent/win_toss  win_percent/loose_toss  
+0         48.60                 48.89                   48.39  
+1         50.96                 52.73                   48.98  
+2         60.53                 66.07                   55.17  
+3         42.86                 50.00                   33.33  
+4         51.89                 49.02                   54.55  
+5         41.90                 41.18                   42.59  
+6         38.67                 44.19                   31.25  
+7         48.39                 28.57                   64.71  
+8         51.92                 52.63                   51.06  
+9         26.09                 15.00                   34.62  
+10        57.27                 56.90                   57.69  
+</code></pre></div>
+<p><strong>In [49]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">plotDF3</span> <span class="o">=</span> <span class="n">teamTossWinDF</span><span class="p">[</span> <span class="p">[</span><span class="s">&#39;short_name&#39;</span><span class="p">,</span> <span class="s">&#39;win_percent/win_toss&#39;</span><span class="p">,</span><span class="s">&#39;win_percent/loose_toss&#39;</span> <span class="p">]</span> <span class="p">]</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+<span class="c"># plot total team wins</span>
+<span class="n">plotDF3</span><span class="p">[[</span><span class="s">&#39;win_percent/win_toss&#39;</span><span class="p">,</span><span class="s">&#39;win_percent/loose_toss&#39;</span><span class="p">]]</span><span class="o">.</span>\
+                                                    <span class="n">plot</span><span class="p">(</span> <span class="n">kind</span><span class="o">=</span><span class="s">&#39;bar&#39;</span><span class="p">,</span> <span class="n">use_index</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>\
+                                                       <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.75</span><span class="p">,</span>\
+                                                       <span class="n">grid</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;#1E90FF&#39;</span><span class="p">,</span><span class="s">&#39;#DC143C&#39;</span><span class="p">])</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span> <span class="s">&#39;Team&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span> <span class="s">&#39;Win Percent&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span> <span class="s">&#39;Win percent with toss&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">100</span><span class="p">]</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">teamTossWinDF</span><span class="p">[</span><span class="s">&#39;short_name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s">&#39;y&#39;</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s">&#39;gray&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_alpha</span><span class="p">(</span><span class="mf">0.75</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span> <span class="c">#vertical lines</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span> <span class="c">#horizontal lines</span></code></pre></div>
+
+<p><img src="/public/team-analysis_files/team-analysis_18_0.png" alt="png"></p>
+
+<h2>Influence of batting/fielding first.</h2>
+
+<p><strong>In [50]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">import</span> <span class="nn">numpy</span>
+<span class="c"># We&#39;ll look at win/loss percent of teams as a function of toss.</span>
+<span class="c"># get the matches won/lost by each team.</span>
+<span class="c"># By grouping the DF according to the winning team.</span>
+<span class="n">bywin</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="o">.</span><span class="n">groupby</span><span class="p">(</span><span class="s">&#39;Winner&#39;</span><span class="p">)</span>
+<span class="n">numWins</span> <span class="o">=</span> <span class="n">bywin</span><span class="o">.</span><span class="n">size</span><span class="p">()</span>
+<span class="c"># Now we&#39;ll need the total number of matches</span>
+<span class="c"># played by each team. </span>
+<span class="n">teamList</span> <span class="o">=</span> <span class="n">bywin</span><span class="o">.</span><span class="n">groups</span><span class="o">.</span><span class="n">keys</span><span class="p">()</span>
+<span class="c"># Loop through each team and identify the number of times</span>
+<span class="c"># the team appears either in the Team1 or Team2 col.</span>
+<span class="c"># we&#39;ll store this data in a seperate DF</span>
+<span class="n">teamBatWinDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span> <span class="n">columns</span><span class="o">=</span><span class="p">(</span><span class="s">&#39;team&#39;</span><span class="p">,</span> <span class="s">&#39;short_name&#39;</span><span class="p">,</span><span class="s">&#39;matches&#39;</span><span class="p">,</span>\
+                                          <span class="s">&#39;wins&#39;</span><span class="p">,</span> <span class="s">&#39;bat_first&#39;</span><span class="p">,</span> <span class="s">&#39;wins/bat_first&#39;</span><span class="p">,</span>\
+                                          <span class="s">&#39;field_first&#39;</span><span class="p">,</span> <span class="s">&#39;wins/field_first&#39;</span><span class="p">),</span>\
+                               <span class="n">index</span><span class="o">=</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">teamList</span><span class="p">))</span> <span class="p">)</span>
+<span class="k">for</span> <span class="n">n</span><span class="p">,</span> <span class="n">t</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">teamList</span><span class="p">):</span>
+    <span class="n">nGames</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="c"># num of times the team batted first and won, this has two parts,</span>
+    <span class="c"># 1) win toss - bat, 2) loose toss - field</span>
+    <span class="n">nBatFirstWin1</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossWin&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">)</span> \
+                       <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossDec&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;bat&#39;</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Winner&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">nBatFirstWin2</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossWin&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">t</span> <span class="p">)</span> \
+                       <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossDec&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;field&#39;</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Winner&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">nBatFirstWin</span> <span class="o">=</span> <span class="n">nBatFirstWin1</span> <span class="o">+</span> <span class="n">nBatFirstWin2</span>
+    <span class="c"># For % need the number of times the team batted first (irrespective of wins)</span>
+    <span class="n">nBatFirst1</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossWin&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">)</span> \
+                       <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossDec&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;bat&#39;</span> <span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">nBatFirst2</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossWin&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">t</span> <span class="p">)</span> \
+                       <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossDec&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;field&#39;</span> <span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">nBatFirst</span> <span class="o">=</span> <span class="n">nBatFirst1</span> <span class="o">+</span> <span class="n">nBatFirst2</span>
+    <span class="c"># Same calculations for field first</span>
+    <span class="n">nFieldFirstWin1</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossWin&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">)</span> \
+                       <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossDec&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;field&#39;</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Winner&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">nFieldFirstWin2</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossWin&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">t</span> <span class="p">)</span> \
+                       <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossDec&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;bat&#39;</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Winner&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">nFieldFirstWin</span> <span class="o">=</span> <span class="n">nFieldFirstWin1</span> <span class="o">+</span> <span class="n">nFieldFirstWin2</span>
+    <span class="c"># For % need the number of times the team batted first (irrespective of wins)</span>
+    <span class="n">nFieldFirst1</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossWin&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span> <span class="p">)</span> \
+                       <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossDec&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;field&#39;</span> <span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">nFieldFirst2</span> <span class="o">=</span> <span class="n">tossTeamDF</span><span class="p">[</span> <span class="p">(</span> <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="o">|</span>\
+              <span class="p">(</span><span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">t</span><span class="p">)</span> <span class="p">)</span> <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossWin&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">t</span> <span class="p">)</span> \
+                       <span class="o">&amp;</span> <span class="p">(</span> <span class="n">tossTeamDF</span><span class="p">[</span><span class="s">&#39;tossDec&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="s">&#39;bat&#39;</span> <span class="p">)</span> <span class="p">]</span>\
+            <span class="p">[</span><span class="s">&#39;Id&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+    <span class="n">nFieldFirst</span> <span class="o">=</span> <span class="n">nFieldFirst1</span> <span class="o">+</span> <span class="n">nFieldFirst2</span>
+    <span class="n">shortName</span> <span class="o">=</span> <span class="s">&#39;&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span> <span class="p">[</span> <span class="n">x</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="k">for</span> <span class="n">x</span> <span class="ow">in</span> <span class="n">t</span><span class="o">.</span><span class="n">split</span><span class="p">()</span> <span class="p">]</span> <span class="p">)</span>
+    <span class="n">teamBatWinDF</span><span class="o">.</span><span class="n">ix</span><span class="p">[</span><span class="n">n</span><span class="p">]</span> <span class="o">=</span> <span class="p">[</span> <span class="n">t</span><span class="p">,</span> <span class="n">shortName</span><span class="p">,</span> <span class="n">nGames</span><span class="p">,</span> <span class="n">numWins</span><span class="p">[</span><span class="n">t</span><span class="p">]</span>\
+                          <span class="p">,</span> <span class="n">nBatFirst</span><span class="p">,</span> <span class="n">nBatFirstWin</span><span class="p">,</span> \
+                          <span class="n">nFieldFirst</span><span class="p">,</span> <span class="n">nFieldFirstWin</span> <span class="p">]</span>
+<span class="c"># Calculate the win %</span>
+<span class="n">teamBatWinDF</span><span class="p">[</span><span class="s">&#39;win_percent/bat_first&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">teamBatWinDF</span><span class="p">[</span><span class="s">&#39;wins/bat_first&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">teamBatWinDF</span><span class="p">[</span><span class="s">&#39;bat_first&#39;</span><span class="p">])</span>\
+                                <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="n">teamBatWinDF</span><span class="p">[</span><span class="s">&#39;win_percent/field_first&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">teamBatWinDF</span><span class="p">[</span><span class="s">&#39;wins/field_first&#39;</span><span class="p">]</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">teamBatWinDF</span><span class="p">[</span><span class="s">&#39;field_first&#39;</span><span class="p">])</span>\
+                                <span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="nb">round</span><span class="p">(</span><span class="n">x</span><span class="p">,</span> <span class="mi">2</span><span class="p">))</span>
+<span class="k">print</span> <span class="n">teamBatWinDF</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text">                           team short_name matches wins bat_first  \
+0   Royal Challengers Bangalore        RCB     107   52        46   
+1         Kolkata Knight Riders        KKR     104   53        51   
+2           Chennai Super Kings        CSK     114   69        66   
+3          Kochi Tuskers Kerala        KTK      14    6         7   
+4               Kings XI Punjab        KXP     106   55        54   
+5              Delhi Daredevils         DD     105   44        44   
+6               Deccan Chargers         DC      75   29        43   
+7           Sunrisers Hyderabad         SH      31   15        19   
+8              Rajasthan Royals         RR     104   54        49   
+9                 Pune Warriors         PW      46   12        20   
+10               Mumbai Indians         MI     110   63        59   
+
+   wins/bat_first field_first wins/field_first  win_percent/bat_first  \
+0              19          61               33                  41.30   
+1              23          53               30                  45.10   
+2              38          48               31                  57.58   
+3               2           7                4                  28.57   
+4              23          52               32                  42.59   
+5              14          61               30                  31.82   
+6              18          32               11                  41.86   
+7               7          12                8                  36.84   
+8              20          55               34                  40.82   
+9               6          26                6                  30.00   
+10             34          51               29                  57.63   
+
+    win_percent/field_first  
+0                     54.10  
+1                     56.60  
+2                     64.58  
+3                     57.14  
+4                     61.54  
+5                     49.18  
+6                     34.38  
+7                     66.67  
+8                     61.82  
+9                     23.08  
+10                    56.86  
+</code></pre></div>
+<p><strong>In [51]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">plotDF4</span> <span class="o">=</span> <span class="n">teamBatWinDF</span><span class="p">[</span> <span class="p">[</span><span class="s">&#39;short_name&#39;</span><span class="p">,</span> <span class="s">&#39;win_percent/bat_first&#39;</span><span class="p">,</span><span class="s">&#39;win_percent/field_first&#39;</span> <span class="p">]</span> <span class="p">]</span>
+<span class="n">fig</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">figure</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">8</span><span class="p">,</span><span class="mi">6</span><span class="p">))</span>
+<span class="n">ax</span> <span class="o">=</span> <span class="n">fig</span><span class="o">.</span><span class="n">add_subplot</span><span class="p">(</span><span class="mi">111</span><span class="p">)</span>
+<span class="c"># plot total team wins</span>
+<span class="n">plotDF4</span><span class="p">[[</span><span class="s">&#39;win_percent/bat_first&#39;</span><span class="p">,</span><span class="s">&#39;win_percent/field_first&#39;</span><span class="p">]]</span><span class="o">.</span>\
+                                                    <span class="n">plot</span><span class="p">(</span> <span class="n">kind</span><span class="o">=</span><span class="s">&#39;bar&#39;</span><span class="p">,</span> <span class="n">use_index</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span>\
+                                                       <span class="n">ax</span><span class="o">=</span><span class="n">ax</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.75</span><span class="p">,</span>\
+                                                       <span class="n">grid</span><span class="o">=</span><span class="bp">True</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;#1E90FF&#39;</span><span class="p">,</span><span class="s">&#39;#DC143C&#39;</span><span class="p">])</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xlabel</span><span class="p">(</span> <span class="s">&#39;Team&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span> <span class="s">&#39;Win Percent&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span> <span class="s">&#39;Win percent with toss&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">16</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">100</span><span class="p">]</span> <span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">teamBatWinDF</span><span class="p">[</span><span class="s">&#39;short_name&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">values</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">tick_params</span><span class="p">(</span><span class="n">axis</span><span class="o">=</span><span class="s">&#39;y&#39;</span><span class="p">,</span> <span class="n">labelsize</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s">&#39;gray&#39;</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_alpha</span><span class="p">(</span><span class="mf">0.75</span><span class="p">)</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">yaxis</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span> <span class="c">#vertical lines</span>
+<span class="n">ax</span><span class="o">.</span><span class="n">xaxis</span><span class="o">.</span><span class="n">grid</span><span class="p">()</span> <span class="c">#horizontal lines</span></code></pre></div>
+
+<p><img src="/public/team-analysis_files/team-analysis_21_0.png" alt="png"></p>
+
+<h2>Build model(s) to predict outcomes.</h2>
+
+<p><strong>In [52]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="n">qryMatData</span> <span class="o">=</span> <span class="s">&quot;&quot;&quot;</span>
+<span class="s">SELECT Game.Id, Game.MatchDate, Game.Venue, Game.Overs,</span>
+<span class="s">Teams.Team1, Teams.Team2,</span>
+<span class="s">Outcome.Winner, Outcome.Runs, Outcome.Wickets, Outcome.Result,</span>
+<span class="s">Toss.Decision as tossDec, Toss.Winner as tossWin</span>
+<span class="s">FROM Game INNER JOIN Outcome</span>
+<span class="s">ON Game.Id = OutCome.MatchId</span>
+<span class="s">INNER JOIN Teams</span>
+<span class="s">ON Game.Id = Teams.MatchId</span>
+<span class="s">INNER JOIN Toss</span>
+<span class="s">ON Game.Id = Toss.MatchId</span>
+<span class="s">&quot;&quot;&quot;</span>
+<span class="n">matchDataDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">read_sql</span><span class="p">(</span> <span class="n">qryMatData</span><span class="p">,</span> <span class="n">conn</span> <span class="p">)</span>
+<span class="k">print</span> <span class="n">matchDataDF</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">2</span><span class="p">)</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text">       Id           MatchDate                                       Venue  \
+0  335982 2008-04-18 00:00:00                       M Chinnaswamy Stadium   
+1  335983 2008-04-19 00:00:00  Punjab Cricket Association Stadium, Mohali   
+
+   Overs                        Team1                  Team2  \
+0     20  Royal Challengers Bangalore  Kolkata Knight Riders   
+1     20              Kings XI Punjab    Chennai Super Kings   
+
+                  Winner  Runs  Wickets Result tossDec  \
+0  Kolkata Knight Riders   140      NaN   None   field   
+1    Chennai Super Kings    33      NaN   None     bat   
+
+                       tossWin  
+0  Royal Challengers Bangalore  
+1          Chennai Super Kings  
+</code></pre></div>
+<h2>Clean the data -&gt; convert strings (teams, venues) to numbers.</h2>
+
+<p><strong>In [53]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">def</span> <span class="nf">get_bat_first</span><span class="p">(</span><span class="n">inputDF</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Function to get whose batting first</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+    <span class="k">if</span> <span class="n">inputDF</span><span class="p">[</span><span class="s">&#39;tossDec&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">inputDF</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">inputDF</span><span class="p">[</span><span class="s">&#39;Team1_Id&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">inputDF</span><span class="p">[</span><span class="s">&#39;Team1_Id&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">inputDF</span><span class="p">[</span><span class="s">&#39;Team2_Id&#39;</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">inputDF</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">inputDF</span><span class="p">[</span><span class="s">&#39;Team1_Id&#39;</span><span class="p">]:</span>
+            <span class="k">return</span> <span class="n">inputDF</span><span class="p">[</span><span class="s">&#39;Team2_Id&#39;</span><span class="p">]</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="k">return</span> <span class="n">inputDF</span><span class="p">[</span><span class="s">&#39;Team1_Id&#39;</span><span class="p">]</span>
+
+<span class="n">matchDataDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">read_sql</span><span class="p">(</span> <span class="n">qryMatData</span><span class="p">,</span> <span class="n">conn</span> <span class="p">)</span>
+<span class="c"># The sklearn classifier doesn&#39;t deal well with strings</span>
+<span class="c"># so convert the strings to nums, basically we&#39;ll</span>
+<span class="c"># assign an id to the teams and venues and toss Decision</span>
+<span class="c"># Change toss dec</span>
+<span class="n">matchDataDF</span><span class="p">[</span><span class="s">&quot;tossDec&quot;</span><span class="p">]</span> <span class="o">=</span> <span class="n">matchDataDF</span><span class="p">[</span><span class="s">&quot;tossDec&quot;</span><span class="p">]</span><span class="o">.</span>\
+<span class="nb">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">tossDec</span><span class="p">:</span> <span class="mi">0</span> <span class="k">if</span> <span class="n">tossDec</span> <span class="o">==</span> <span class="s">&quot;bat&quot;</span> <span class="k">else</span> <span class="mi">1</span><span class="p">)</span>
+<span class="c"># Now we&#39;ll use the awesome functions of Pandas to deal with</span>
+<span class="c"># the teams and venues data. BTW there is a data type called</span>
+<span class="c"># categorical in Pandas. Look into it.</span>
+<span class="c"># Need to inner join both team1 and team2 data to make sure</span>
+<span class="c"># we dont miss any teams</span>
+<span class="n">allTeams</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span> \
+                         <span class="n">pandas</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span> \
+                        <span class="p">[</span> <span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">],</span> <span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]</span> <span class="p">]</span> <span class="p">)</span>\
+                         <span class="o">.</span><span class="n">unique</span><span class="p">()</span> <span class="p">)</span>
+<span class="c"># use the categorical functions of pandas to convert our</span>
+<span class="c"># string type teams into numeric values</span>
+<span class="n">venueIdx</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Index</span><span class="p">(</span> <span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Venue&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">unique</span><span class="p">()</span> <span class="p">)</span>
+<span class="n">cVenue</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span> \
+                <span class="n">venueIdx</span><span class="o">.</span><span class="n">get_indexer</span><span class="p">(</span><span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Venue&#39;</span><span class="p">]),</span> <span class="n">venueIdx</span> <span class="p">)</span>
+<span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Venue_Id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cVenue</span><span class="o">.</span><span class="n">labels</span>
+<span class="c"># Teams is a bit complicated as we need the same</span>
+<span class="c"># team id for 4 different columns</span>
+<span class="n">teamIdx</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Index</span><span class="p">(</span> <span class="n">allTeams</span> <span class="p">)</span>
+<span class="n">cTeam1</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span> \
+                <span class="n">teamIdx</span><span class="o">.</span><span class="n">get_indexer</span><span class="p">(</span><span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Team1&#39;</span><span class="p">]),</span> <span class="n">teamIdx</span> <span class="p">)</span>
+<span class="n">cTeam2</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span> \
+                <span class="n">teamIdx</span><span class="o">.</span><span class="n">get_indexer</span><span class="p">(</span><span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Team2&#39;</span><span class="p">]),</span> <span class="n">teamIdx</span> <span class="p">)</span>
+<span class="n">cWinner</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span> \
+                <span class="n">teamIdx</span><span class="o">.</span><span class="n">get_indexer</span><span class="p">(</span><span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Winner&#39;</span><span class="p">]),</span> <span class="n">teamIdx</span> <span class="p">)</span>
+<span class="n">cTossWin</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">Categorical</span><span class="p">(</span> \
+                <span class="n">teamIdx</span><span class="o">.</span><span class="n">get_indexer</span><span class="p">(</span><span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;tossWin&#39;</span><span class="p">]),</span> <span class="n">teamIdx</span> <span class="p">)</span>
+<span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Team1_Id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cTeam1</span><span class="o">.</span><span class="n">labels</span>
+<span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Team2_Id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cTeam2</span><span class="o">.</span><span class="n">labels</span>
+<span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cWinner</span><span class="o">.</span><span class="n">labels</span>
+<span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;tossWin_Id&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">cTossWin</span><span class="o">.</span><span class="n">labels</span>
+<span class="c"># We&#39;ll add a bat_first column to see if it improves predictions</span>
+<span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;bat_first&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">matchDataDF</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span> <span class="n">get_bat_first</span><span class="p">,</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span> <span class="p">)</span>
+<span class="c"># drop the columns we dont need</span>
+<span class="n">matchDataDF</span> <span class="o">=</span> <span class="n">matchDataDF</span><span class="o">.</span><span class="n">drop</span><span class="p">(</span>\
+                    <span class="p">[</span><span class="s">&#39;Winner&#39;</span><span class="p">,</span> <span class="s">&#39;Team1&#39;</span><span class="p">,</span> <span class="s">&#39;Team2&#39;</span><span class="p">,</span> <span class="s">&#39;Venue&#39;</span><span class="p">,</span> <span class="s">&#39;tossWin&#39;</span><span class="p">],</span> <span class="n">axis</span><span class="o">=</span><span class="mi">1</span> <span class="p">)</span>
+<span class="k">print</span> <span class="n">matchDataDF</span><span class="o">.</span><span class="n">head</span><span class="p">(</span><span class="mi">5</span><span class="p">)</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text">       Id           MatchDate  Overs  Runs  Wickets Result  tossDec  Venue_Id  \
+0  335982 2008-04-18 00:00:00     20   140      NaN   None        1         0   
+1  335983 2008-04-19 00:00:00     20    33      NaN   None        0         1   
+2  335984 2008-04-19 00:00:00     20   NaN        9   None        0         2   
+3  335985 2008-04-20 00:00:00     20   NaN        5   None        0         3   
+4  335986 2008-04-20 00:00:00     20   NaN        5   None        0         4   
+
+   Team1_Id  Team2_Id  Winner_Id  tossWin_Id  bat_first  
+0         0         4          4           0          0  
+1         1         7          7           7          7  
+2         2         5          2           5          2  
+3         3         0          0           3          0  
+4         4         6          4           6          4  
+</code></pre></div>
+<h2>Random forest classifier.</h2>
+
+<p><strong>In [54]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c"># Import the random forest package</span>
+<span class="kn">import</span> <span class="nn">numpy</span>
+<span class="kn">from</span> <span class="nn">sklearn.ensemble</span> <span class="kn">import</span> <span class="n">RandomForestClassifier</span> 
+<span class="c"># Create the random forest object which will include all the parameters</span>
+<span class="c"># for the fit</span>
+<span class="n">forest</span> <span class="o">=</span> <span class="n">RandomForestClassifier</span><span class="p">(</span><span class="n">n_estimators</span> <span class="o">=</span> <span class="mi">1000</span><span class="p">)</span>
+<span class="c"># Now we need to remove the matches for which there were no winners</span>
+<span class="n">matchDataDF</span> <span class="o">=</span> <span class="n">matchDataDF</span><span class="p">[</span><span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="c"># Divide into test and training sets</span>
+<span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;is_train&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">numpy</span><span class="o">.</span><span class="n">random</span><span class="o">.</span><span class="n">uniform</span><span class="p">(</span> <span class="mi">0</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="nb">len</span><span class="p">(</span><span class="n">matchDataDF</span><span class="p">)</span> <span class="p">)</span> <span class="o">&lt;=</span> <span class="o">.</span><span class="mi">8</span>
+<span class="c"># Divide the data into training and test sets</span>
+<span class="n">train</span><span class="p">,</span> <span class="n">test</span> <span class="o">=</span> <span class="n">matchDataDF</span><span class="p">[</span><span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;is_train&#39;</span><span class="p">]</span><span class="o">==</span><span class="bp">True</span><span class="p">],</span>\
+<span class="n">matchDataDF</span><span class="p">[</span><span class="n">matchDataDF</span><span class="p">[</span><span class="s">&#39;is_train&#39;</span><span class="p">]</span><span class="o">==</span><span class="bp">False</span><span class="p">]</span>
+<span class="c"># The features which we&#39;ll take in as inputs</span>
+<span class="n">features</span> <span class="o">=</span> <span class="n">matchDataDF</span><span class="o">.</span><span class="n">columns</span><span class="p">[</span> <span class="p">[</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span> <span class="p">]</span> <span class="p">]</span>
+<span class="c"># Fit the data using random forests</span>
+<span class="n">rfFit</span> <span class="o">=</span> <span class="n">forest</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span> <span class="n">train</span><span class="p">[</span><span class="n">features</span><span class="p">],</span> <span class="n">train</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="p">)</span></code></pre></div>
+
+<h2>Test the classifier.</h2>
+
+<p><strong>In [55]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="c"># Test the classifier</span>
+<span class="kn">from</span> <span class="nn">sklearn.cross_validation</span> <span class="kn">import</span> <span class="n">cross_val_score</span>
+<span class="n">rfTestOut</span> <span class="o">=</span> <span class="n">rfFit</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="n">features</span><span class="p">])</span>
+<span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id_pred_RF&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">rfTestOut</span>
+<span class="n">crctPred</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id_pred_RF&#39;</span><span class="p">]</span> <span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">wrngPred</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id_pred_RF&#39;</span><span class="p">]</span> <span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="c"># Accurate pred. percent</span>
+<span class="n">percAccrcy</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span> <span class="n">crctPred</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="p">(</span><span class="n">crctPred</span><span class="o">+</span><span class="n">wrngPred</span><span class="p">),</span> <span class="mi">2</span> <span class="p">)</span>
+<span class="k">print</span> <span class="s">&quot;##### TESTING RANDOM FOREST CLASSIFIER ####&quot;</span>
+<span class="k">print</span> <span class="s">&quot;Accuracy over all test set--&gt;&quot;</span><span class="p">,</span> <span class="n">percAccrcy</span><span class="p">,</span> <span class="s">&#39;%&#39;</span>
+<span class="n">valdtDF</span> <span class="o">=</span> <span class="n">pandas</span><span class="o">.</span><span class="n">crosstab</span><span class="p">(</span><span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">],</span> <span class="n">rfTestOut</span><span class="p">,</span> \
+                      <span class="n">rownames</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;actual&#39;</span><span class="p">],</span> <span class="n">colnames</span><span class="o">=</span><span class="p">[</span><span class="s">&#39;preds&#39;</span><span class="p">])</span>
+<span class="c"># Now loop through and find accuracy over each team</span>
+<span class="k">print</span> <span class="s">&quot;------individual team predictions-------&quot;</span>
+<span class="k">for</span> <span class="n">cc</span> <span class="ow">in</span> <span class="n">valdtDF</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+    <span class="n">currDet</span> <span class="o">=</span> <span class="n">valdtDF</span><span class="p">[</span><span class="n">cc</span><span class="p">]</span>
+    <span class="c"># Correct pred</span>
+    <span class="k">if</span> <span class="n">cc</span> <span class="ow">in</span> <span class="n">currDet</span><span class="p">:</span>
+        <span class="n">currPercCrct</span> <span class="o">=</span> \
+        <span class="nb">round</span><span class="p">(</span> <span class="n">currDet</span><span class="p">[</span><span class="n">cc</span><span class="p">]</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="n">currDet</span><span class="o">.</span><span class="n">sum</span><span class="p">(),</span> <span class="mi">2</span> <span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">currPercCrct</span> <span class="o">=</span> <span class="mi">0</span>
+    <span class="k">print</span> <span class="n">teamIdx</span><span class="p">[</span><span class="n">cc</span><span class="p">],</span> <span class="s">&#39;----&gt;&#39;</span><span class="p">,</span> <span class="n">currPercCrct</span><span class="p">,</span> <span class="s">&#39;%&#39;</span>
+<span class="k">print</span> <span class="s">&quot;##### TESTING RANDOM FOREST CLASSIFIER ####&quot;</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text">##### TESTING RANDOM FOREST CLASSIFIER ####
+Accuracy over all test set--&gt; 69.23 %
+------individual team predictions-------
+Royal Challengers Bangalore ----&gt; 66.67 %
+Kings XI Punjab ----&gt; 75.0 %
+Delhi Daredevils ----&gt; 46.15 %
+Mumbai Indians ----&gt; 88.89 %
+Kolkata Knight Riders ----&gt; 72.73 %
+Rajasthan Royals ----&gt; 58.33 %
+Deccan Chargers ----&gt; 66.67 %
+Chennai Super Kings ----&gt; 80.0 %
+Sunrisers Hyderabad ----&gt; 0.0 %
+##### TESTING RANDOM FOREST CLASSIFIER ####
+</code></pre></div>
+<h2>The most important features.</h2>
+
+<p><strong>In [56]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="k">print</span> <span class="s">&quot; Random Forest Feature Importances &quot;</span>
+<span class="k">for</span> <span class="n">nfea</span><span class="p">,</span> <span class="n">fea</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">features</span><span class="p">):</span>
+    <span class="k">print</span> <span class="n">fea</span><span class="p">,</span> <span class="s">&#39;---&gt;&#39;</span><span class="p">,</span> <span class="n">rfFit</span><span class="o">.</span><span class="n">feature_importances_</span><span class="p">[</span><span class="n">nfea</span><span class="p">]</span>
+<span class="k">print</span> <span class="s">&quot; Random Forest Feature Importances &quot;</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text"> Random Forest Feature Importances 
+tossDec ---&gt; 0.128036711172
+Venue_Id ---&gt; 0.148671698856
+Team1_Id ---&gt; 0.159167269973
+Team2_Id ---&gt; 0.176963645973
+tossWin_Id ---&gt; 0.165245937002
+bat_first ---&gt; 0.221914737024
+ Random Forest Feature Importances 
+</code></pre></div>
+<h2>Compare With Naive Bayes Classifier.</h2>
+
+<p><strong>In [57]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">sklearn.naive_bayes</span> <span class="kn">import</span> <span class="n">GaussianNB</span>
+<span class="c"># Instantiate the estimator</span>
+<span class="n">nbClf</span> <span class="o">=</span> <span class="n">GaussianNB</span><span class="p">()</span>
+<span class="n">nbFit</span> <span class="o">=</span> <span class="n">nbClf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span> <span class="n">train</span><span class="p">[</span><span class="n">features</span><span class="p">],</span> <span class="n">train</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="p">)</span>
+<span class="n">nbTestOut</span> <span class="o">=</span> <span class="n">nbFit</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span> <span class="n">test</span><span class="p">[</span><span class="n">features</span><span class="p">]</span> <span class="p">)</span>
+<span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id_pred_NB&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">nbTestOut</span>
+<span class="n">crctPredNB</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id_pred_NB&#39;</span><span class="p">]</span> <span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">wrngPredNB</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id_pred_NB&#39;</span><span class="p">]</span> <span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="c"># Accurate pred. percent</span>
+<span class="n">percAccrcyNB</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span> <span class="n">crctPredNB</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="p">(</span><span class="n">crctPredNB</span><span class="o">+</span><span class="n">wrngPredNB</span><span class="p">),</span> <span class="mi">2</span> <span class="p">)</span>
+<span class="k">print</span> <span class="s">&quot;Naive Bayes accuracy over all test set--&gt;&quot;</span><span class="p">,</span> <span class="n">percAccrcyNB</span><span class="p">,</span> <span class="s">&#39;%&#39;</span>
+<span class="k">print</span> <span class="s">&quot;You can see, why NB is bad. The parameters are very interdependent.&quot;</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text">Naive Bayes accuracy over all test set--&gt; 23.08 %
+You can see, why NB is bad. The parameters are very interdependent.
+</code></pre></div>
+<h2>Compare with SVM.</h2>
+
+<p><strong>In [58]:</strong></p>
+
+<div class="highlight"><pre><code class="language-python" data-lang="python"><span class="kn">from</span> <span class="nn">sklearn</span> <span class="kn">import</span> <span class="n">svm</span>
+<span class="n">svmClf</span> <span class="o">=</span> <span class="n">svm</span><span class="o">.</span><span class="n">SVC</span><span class="p">()</span>
+<span class="n">svmFit</span> <span class="o">=</span> <span class="n">svmClf</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span> <span class="n">train</span><span class="p">[</span><span class="n">features</span><span class="p">],</span> <span class="n">train</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="p">)</span>
+<span class="n">svmTestOut</span> <span class="o">=</span> <span class="n">svmFit</span><span class="o">.</span><span class="n">predict</span><span class="p">(</span> <span class="n">test</span><span class="p">[</span><span class="n">features</span><span class="p">]</span> <span class="p">)</span>
+<span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id_pred_SVM&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">svmTestOut</span>
+<span class="n">crctPredSVM</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id_pred_SVM&#39;</span><span class="p">]</span> <span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="n">wrngPredSVM</span> <span class="o">=</span> <span class="n">test</span><span class="p">[</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id&#39;</span><span class="p">]</span> <span class="o">!=</span> <span class="n">test</span><span class="p">[</span><span class="s">&#39;Winner_Id_pred_SVM&#39;</span><span class="p">]</span> <span class="p">]</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+<span class="c"># Accurate pred. percent</span>
+<span class="n">percAccrcySVM</span> <span class="o">=</span> <span class="nb">round</span><span class="p">(</span> <span class="n">crctPredSVM</span><span class="o">*</span><span class="mf">100.</span><span class="o">/</span><span class="p">(</span><span class="n">crctPredSVM</span><span class="o">+</span><span class="n">wrngPredSVM</span><span class="p">),</span> <span class="mi">2</span> <span class="p">)</span>
+<span class="k">print</span> <span class="s">&quot;SVM accuracy over all test set--&gt;&quot;</span><span class="p">,</span> <span class="n">percAccrcySVM</span><span class="p">,</span> <span class="s">&#39;%&#39;</span></code></pre></div>
+<div class="highlight"><pre><code class="language-text" data-lang="text">SVM accuracy over all test set--&gt; 49.45 %
+</code></pre></div>
   </div>
   
 </div>
