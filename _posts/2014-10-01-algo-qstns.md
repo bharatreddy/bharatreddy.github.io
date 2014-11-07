@@ -7,7 +7,6 @@ Below are a set of ipython notebooks which contain a collection of algorithm que
 
 Note that there is a high possibility that some of the solutions are incorrect or may simply not be best solutions. Treat these as a set of practice questions and don't rely on the solutions. I'll be glad to fix any bugs you may find or take in suggestions.
 
-Download the notebooks by [visiting the project on GitHub](https://github.com/bharatreddy/giraffe/tree/master/alg).
 
 ## Topics
 - [Part1 - Recursion](http://nbviewer.ipython.org/github/bharatreddy/giraffe/blob/master/alg/Part1-Recursion.ipynb)
