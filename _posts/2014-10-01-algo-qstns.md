@@ -3,7 +3,7 @@ layout: post
 title: Collection of CS algorithm questions.
 ---
 
-Below are a set of ipython notebooks which contain a collection of algorithm questions (and solutions in python) from different topics. I tried to solve these questions over time and built a collection for reference over time. The source websites for these questinos are included with the questions.
+Below are a set of ipython notebooks which contain a collection of algorithm questions (and solutions in python) from different topics. I tried to solve these questions over time and built a collection for reference. The source websites for these questions are included.
 
 Note that there is a high possibility that some of the solutions are incorrect or may simply not be best solutions. Treat these as a set of practice questions and don't rely on the solutions. I'll be glad to fix any bugs you may find or take in suggestions.
 
