@@ -29,7 +29,7 @@ The current app uses MySQL, Python and Pandas as the backend. The frontend is co
 - Change all the css and js file links in the index.html file to point to the static folder.
 - A sample index.html file using boostrap is shown below. 
 	{% highlight html %}
-	<!DOCTYPE html>
+		<!DOCTYPE html>
 	<html>
 	<head>
 	    <meta charset="utf-8">
@@ -56,7 +56,7 @@ The current app uses MySQL, Python and Pandas as the backend. The frontend is co
 	{% endhighlight %} 
 - Now we have an html page. We now need a mapper to map the html file (index.html) to othe Flask framework. Create a file called run.py in the root folder and create a mapper for the index.html file as shown below.
 	{% highlight python %}
-	from flask import Flask, render_template, request, jsonify
+		from flask import Flask, render_template, request, jsonify
 	app = Flask(__name__)
 	@app.route("/")
 	def starter():
