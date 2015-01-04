@@ -28,6 +28,7 @@ The current app uses MySQL, Python and Pandas as the backend. The frontend is co
 - Place the bootstrap files in the static folder. In the templates folder create an html file named index.html.
 - Change all the css and js file links in the index.html file to point to the static folder.
 - A sample index.html file using boostrap is shown below. 
+
 	<!DOCTYPE html>
 	<html>
 	<head>
@@ -52,11 +53,14 @@ The current app uses MySQL, Python and Pandas as the backend. The frontend is co
       </div>
 	</body>
 	</html>
+
 - Now we have an html page. We now need a mapper to map the html file (index.html) to othe Flask framework. Create a file called run.py in the root folder and create a mapper for the index.html file as shown below.
+
 	from flask import Flask, render_template, request, jsonify
 	app = Flask(__name__)
 
 	@app.route("/")
 	def starter():
 	    return render_template('index.html')
+	    
 - Refer the [project page](https://github.com/bharatreddy/cricstats) for a lot of additional functionality that can be added.
