@@ -21,11 +21,11 @@ The current app uses MySQL, Python and Pandas as the backend. The frontend is co
 
 ## Process outline
 
-- Install flask (pip install Flask) and other required libraries. In case you don't already use the pip/easy_install package mangers for python, I definetly recommend doing so.
+- Install flask (pip install Flask) and other required libraries. In case you don't already use the pip/easy_install package mangers for python, I recommend doing so.
 - Any Flask app has two main subfolders - static, templates. The static folder has files related to the frontend operations (through http), basically the javascript and css files. The templates folder is the place where we have the [Jinja2 templates](http://jinja.pocoo.org/docs/dev/) - the files rendered by the flask app (for example index_cric.html file in the current project).
 - Get the Bootstrap files from [here](http://getbootstrap.com/getting-started/#download). There are multiple formats available for download such as the Compiled Bootstrap and Bootstrap source. I'm using the compiled version for ease of use. Also, there are plenty of free bootstrap themes available [online](http://www.blacktie.co/).
-- The downloaded (and unzipped) folder should have 3 directories - css, js and fonts. The css and js folders contain the compiled/minified css and javascript bootstrap files respectively. The files in the fonts folder contain about 200 icons from the Glyphicon Halflings set.
-- Place the bootstrap files in the static folder. In the templates folder create an html file named index.html.
+- The downloaded (and unzipped) bootstrap folder should have 3 directories - css, js and fonts. The css and js folders contain the compiled/minified css and javascript bootstrap files respectively. The files in the fonts folder contain about 200 icons from the Glyphicon Halflings set.
+- Place the bootstrap folder inside the static folder. In the templates folder create an html file named index.html.
 - Change all the css and js file links in the index.html file to point to the static folder.
 - A sample index.html file using boostrap is shown below. 
 {% highlight html %}
@@ -42,19 +42,19 @@ The current app uses MySQL, Python and Pandas as the backend. The frontend is co
     <link href="static/bootstrap/css/starter-template.css" rel="stylesheet">
     <script src="static/jquery-1.10.2.min.js"></script>
     <script src="http://code.jquery.com/jquery.min.js"></script>
-    <script src="js/bootstrap.min.js"></script>
+    <script src="static/bootstrap/js/bootstrap.min.js"></script>
 </head>
 <body>
   <div class="container">
     <div class="starter-template">
       <h1>Tester App</h1>
-      <p class="lead" id='printUsers'>Base template</p>
+      <p class="lead">Base template</p>
     </div>
   </div>
 </body>
 </html>
 {% endhighlight %} 
-- Now we have an html page. We now need a mapper to map the html file (index.html) to othe Flask framework. Create a file called run.py in the root folder and create a mapper for the index.html file as shown below.
+- We have an html page. We now need a mapper to map the html file (index.html) to the Flask framework, this creates a communication route between frontend and the backend to make add complicated functionality. Create a file called run.py in the root folder and create a mapper for the index.html file as shown below.
 {% highlight python %}
 from flask import Flask, render_template, request, jsonify
 app = Flask(__name__)
@@ -62,4 +62,4 @@ app = Flask(__name__)
 def starter():
     return render_template('index.html')
 {% endhighlight %}    
-- Refer the [project page](https://github.com/bharatreddy/cricstats) for a lot of additional functionality such as using data from MySQL to make d3.js visualizations.
+- We can create more mappings like above by changing the route. Refer the [project page](https://github.com/bharatreddy/cricstats) for a lot of additional functionality such as using data from MySQL to make d3.js visualizations.
