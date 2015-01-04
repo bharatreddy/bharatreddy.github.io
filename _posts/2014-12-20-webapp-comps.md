@@ -28,38 +28,38 @@ The current app uses MySQL, Python and Pandas as the backend. The frontend is co
 - Place the bootstrap files in the static folder. In the templates folder create an html file named index.html.
 - Change all the css and js file links in the index.html file to point to the static folder.
 - A sample index.html file using boostrap is shown below. 
-	{% highlight html %}
-		<!DOCTYPE html>
-	<html>
-	<head>
-	    <meta charset="utf-8">
-	    <title>Test bootstrap template</title>
-	    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-	    <!-- Bootstrap core CSS -->
-	    <link href="static/bootstrap/css/bootstrap.css" rel="stylesheet">
+{% highlight html %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Test bootstrap template</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Bootstrap core CSS -->
+    <link href="static/bootstrap/css/bootstrap.css" rel="stylesheet">
 
-	    <!-- Custom styles for this template -->
-	    <link href="static/bootstrap/css/starter-template.css" rel="stylesheet">
-	    <script src="static/jquery-1.10.2.min.js"></script>
-	    <script src="http://code.jquery.com/jquery.min.js"></script>
-	    <script src="js/bootstrap.min.js"></script>
-	</head>
-	<body>
-	  <div class="container">
-        <div class="starter-template">
-          <h1>Tester App</h1>
-          <p class="lead" id='printUsers'>Base template</p>
-        </div>
-      </div>
-	</body>
-	</html>
-	{% endhighlight %} 
+    <!-- Custom styles for this template -->
+    <link href="static/bootstrap/css/starter-template.css" rel="stylesheet">
+    <script src="static/jquery-1.10.2.min.js"></script>
+    <script src="http://code.jquery.com/jquery.min.js"></script>
+    <script src="js/bootstrap.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <div class="starter-template">
+      <h1>Tester App</h1>
+      <p class="lead" id='printUsers'>Base template</p>
+    </div>
+  </div>
+</body>
+</html>
+{% endhighlight %} 
 - Now we have an html page. We now need a mapper to map the html file (index.html) to othe Flask framework. Create a file called run.py in the root folder and create a mapper for the index.html file as shown below.
-	{% highlight python %}
-		from flask import Flask, render_template, request, jsonify
-	app = Flask(__name__)
-	@app.route("/")
-	def starter():
-	    return render_template('index.html')
-	{% endhighlight %}    
+{% highlight python %}
+from flask import Flask, render_template, request, jsonify
+app = Flask(__name__)
+@app.route("/")
+def starter():
+    return render_template('index.html')
+{% endhighlight %}    
 - Refer the [project page](https://github.com/bharatreddy/cricstats) for a lot of additional functionality such as using data from MySQL to make d3.js visualizations.
