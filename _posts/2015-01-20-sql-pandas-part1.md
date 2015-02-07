@@ -12,31 +12,6 @@ A little while back I started learning Pandas and [Greg Reda's](http://www.gregr
 
 This post covers the [first assignment](https://class.coursera.org/db/quiz/attempt?quiz_id=128).
 
-
-> SQL exercise questions from Coursera - Introduction to Databases course
->> SQL Movie-Rating Query Exercises (core set)
-
-> In this part we'll use a database called 'rating'. I downloaded it from the Introduction to databases course in coursera. The database has three tables ( 'Movie', 'Rating', 'Reviewer' ). The schema is shown below.
-
->                                                       Movie table
-
->| mID | title | year | director |
-  | ------ |:---:| ----:|----:|
-  |    -    |   -  |   -   |   -   |
-
->                                                      Rating table
-
->| rID | mID | stars | ratingDate |
-  | ------ |:---:| ----:|----:|
-  |    -    |   -  |   -   |   -   |
-  
->                                                     Reviewer table
-
->| rID | name |
-  | ------ |:---:|
-  |    -    |   -  |
-
-
 {% highlight ipy %}
 In [1]: import pandas
 import mysql.connector
