@@ -16,9 +16,7 @@ This post covers the [first assignment](https://class.coursera.org/db/quiz/attem
 > SQL exercise questions from Coursera - Introduction to Databases course
 >> SQL Movie-Rating Query Exercises (core set)
 
-> In this part we'll use a database called 'rating'. I downloaded it from the
-Introduction to databases course in coursera. The database has three tables (
-'Movie', 'Rating', 'Reviewer' ). The schema is shown below.
+> In this part we'll use a database called 'rating'. I downloaded it from the Introduction to databases course in coursera. The database has three tables ( 'Movie', 'Rating', 'Reviewer' ). The schema is shown below.
 
 >                                                       Movie table
 
@@ -31,7 +29,7 @@ Introduction to databases course in coursera. The database has three tables (
 >| rID | mID | stars | ratingDate |
   | ------ |:---:| ----:|----:|
   |    -    |   -  |   -   |   -   |
-
+  
 >                                                     Reviewer table
 
 >| rID | name |
@@ -39,20 +37,16 @@ Introduction to databases course in coursera. The database has three tables (
   |    -    |   -  |
 
 
-**In [1]:**
-
-{% highlight python %}
-import pandas
+{% highlight ipy %}
+In [1]: import pandas
 import mysql.connector
 # set up connections to the DB
 conn = mysql.connector.Connect(host='localhost',user='root',\
                         password='',database='rating')
 {% endhighlight %}
 
-**In [1]:**
-
-{% highlight python %}
-import pandas
+{% highlight ipy %}
+In [1]: import pandas
 import mysql.connector
 # set up connections to the DB
 conn = mysql.connector.Connect(host='localhost',user='root',\
@@ -72,14 +66,12 @@ ratDF = pandas.read_sql( qryRt, conn )
 rvwrDF = pandas.read_sql( qryRe, conn )
 {% endhighlight %}
 
-## Question-1 : Find the titles of all movies directed by Steven Spielberg.
+## Question-1 : Find the titles of all movies directed by Steven Spielberg. 
 
 ### Solution using SQL.
 
-**In [2]:**
-
-{% highlight python %}
-#SQL query
+{% highlight ipy %}
+In [2]: #SQL query
 qry = """
         SELECT title FROM Movie
         WHERE director = 'Steven Spielberg'
@@ -88,39 +80,32 @@ qry = """
 qDF = pandas.read_sql( qry, conn )
 # print the data
 print qDF
+                     title
+0                     E.T.
+1  Raiders of the Lost Ark
+
+[2 rows x 1 columns]
+
 {% endhighlight %}
-
-                         title
-    0                     E.T.
-    1  Raiders of the Lost Ark
-    
-    [2 rows x 1 columns]
-
 
 ### Solution using Pandas.
 > Methods used : selection
 
-**In [3]:**
-
-{% highlight python %}
-# simple selection
+{% highlight ipy %}
+In [3]: # simple selection
 print movieDF[ movieDF['director'] == 'Steven Spielberg' ]['title']
+3                       E.T.
+7    Raiders of the Lost Ark
+Name: title, dtype: object
+
 {% endhighlight %}
 
-    3                       E.T.
-    7    Raiders of the Lost Ark
-    Name: title, dtype: object
-
-
-## Question-2 : Find all years that have a movie that received a rating of 4 or
-5, and sort them in increasing order.
+## Question-2 : Find all years that have a movie that received a rating of 4 or 5, and sort them in increasing order.
 
 ### Solution using SQL.
 
-**In [3]:**
-
-{% highlight python %}
-#SQL query
+{% highlight ipy %}
+In [3]: #SQL query
 qry = """
         SELECT DISTINCT mv.year FROM Movie mv
         INNER JOIN Rating ra
@@ -132,24 +117,21 @@ qry = """
 qDF = pandas.read_sql( qry, conn )
 # print the data
 print qDF
+   year
+0  1937
+1  1939
+2  1981
+3  2009
+
+[4 rows x 1 columns]
+
 {% endhighlight %}
-
-       year
-    0  1937
-    1  1939
-    2  1981
-    3  2009
-    
-    [4 rows x 1 columns]
-
 
 ### Solution using Pandas.
 > Methods used : selection, merge(inner), sort, unique
 
-**In [4]:**
-
-{% highlight python %}
-# store the ratings in new DF for ease of operation
+{% highlight ipy %}
+In [4]: # store the ratings in new DF for ease of operation
 # we also reset the index.
 ratDFNew = ratDF[ ratDF['stars'] >= 4 ].reset_index()
 # Now merge (similar to join in SQL) the new ratingDF
@@ -166,19 +148,16 @@ resDF.sort( ['year'], ascending=True, inplace=True )
 resDF = resDF['year']
 # Print the unique values using unique() statement
 print resDF.unique()
+[1937 1939 1981 2009]
+
 {% endhighlight %}
-
-    [1937 1939 1981 2009]
-
 
 ## Question-3 : Find the titles of all movies that have no ratings.
 
 ### Solution using SQL.
 
-**In [4]:**
-
-{% highlight python %}
-#SQL query
+{% highlight ipy %}
+In [4]: #SQL query
 qry = """
         SELECT mv.title FROM Movie mv
         LEFT JOIN Rating ra
@@ -189,22 +168,19 @@ qry = """
 qDF = pandas.read_sql( qry, conn )
 # print the data
 print qDF
+       title
+0  Star Wars
+1    Titanic
+
+[2 rows x 1 columns]
+
 {% endhighlight %}
-
-           title
-    0  Star Wars
-    1    Titanic
-    
-    [2 rows x 1 columns]
-
 
 ### Solution using Pandas.
 > Methods used : merge(left), isnull
 
-**In [6]:**
-
-{% highlight python %}
-# We'll merge the two DFs using
+{% highlight ipy %}
+In [6]: # We'll merge the two DFs using
 # 'left' method. This is like the 
 # left outer join in SQL.
 resDF = pandas.merge( movieDF, ratDF, \
@@ -214,22 +190,18 @@ resDF = pandas.merge( movieDF, ratDF, \
 resDF = resDF[ resDF['stars'].isnull() ]\
 .reset_index()['title']
 print resDF
+0    Star Wars
+1      Titanic
+Name: title, dtype: object
+
 {% endhighlight %}
 
-    0    Star Wars
-    1      Titanic
-    Name: title, dtype: object
-
-
-## Question-4 : Some reviewers didn't provide a date with their rating. Find the
-names of all reviewers who have ratings with a NULL value for the date.
+## Question-4 : Some reviewers didn't provide a date with their rating. Find the names of all reviewers who have ratings with a NULL value for the date.
 
 ### Solution using SQL.
 
-**In [7]:**
-
-{% highlight python %}
-#SQL query
+{% highlight ipy %}
+In [7]: #SQL query
 qry = """
         SELECT re.name FROM Reviewer re
         INNER JOIN Rating ra
@@ -240,22 +212,19 @@ qry = """
 qDF = pandas.read_sql( qry, conn )
 # print the data
 print qDF
+            name
+0   Daniel Lewis
+1  Chris Jackson
+
+[2 rows x 1 columns]
+
 {% endhighlight %}
-
-                name
-    0   Daniel Lewis
-    1  Chris Jackson
-    
-    [2 rows x 1 columns]
-
 
 ### Solution using Pandas.
 > Methods used : Methods used : merge(inner), isnull()
 
-**In [8]:**
-
-{% highlight python %}
- # We'll merge rvwrDF and ratDF
+{% highlight ipy %}
+In [8]:  # We'll merge rvwrDF and ratDF
 # and retreive rows which have Null
 # in date.
 resDF = pandas.merge( rvwrDF, ratDF, \
@@ -265,23 +234,18 @@ resDF = pandas.merge( rvwrDF, ratDF, \
 resDF = resDF[ resDF['ratingDate'].isnull() ]\
 .reset_index()['name']
 print resDF
+0     Daniel Lewis
+1    Chris Jackson
+Name: name, dtype: object
+
 {% endhighlight %}
 
-    0     Daniel Lewis
-    1    Chris Jackson
-    Name: name, dtype: object
-
-
-## Question-5 : Write a query to return the ratings data in a more readable
-format: reviewer name, movie title, stars, and ratingDate. Also, sort the data,
-first by reviewer name, then by movie title, and lastly by number of stars.
+## Question-5 : Write a query to return the ratings data in a more readable format: reviewer name, movie title, stars, and ratingDate. Also, sort the data, first by reviewer name, then by movie title, and lastly by number of stars. 
 
 ### Solution using SQL
 
-**In [6]:**
-
-{% highlight python %}
-#SQL query
+{% highlight ipy %}
+In [6]: #SQL query
 qry = """
         SELECT re.name, mv.title, ra.stars, ra.ratingDate
         FROM Movie mv 
@@ -293,34 +257,31 @@ qry = """
 qDF = pandas.read_sql( qry, conn )
 # print the data
 print qDF
+                name                    title  stars  ratingDate
+0       Ashley White                     E.T.      3  2011-01-02
+1    Brittany Harris  Raiders of the Lost Ark      2  2011-01-30
+2    Brittany Harris  Raiders of the Lost Ark      4  2011-01-12
+3    Brittany Harris       The Sound of Music      2  2011-01-20
+4      Chris Jackson                     E.T.      2  2011-01-22
+5      Chris Jackson  Raiders of the Lost Ark      4        None
+6      Chris Jackson       The Sound of Music      3  2011-01-27
+7       Daniel Lewis               Snow White      4        None
+8   Elizabeth Thomas                   Avatar      3  2011-01-15
+9   Elizabeth Thomas               Snow White      5  2011-01-19
+10     James Cameron                   Avatar      5  2011-01-20
+11     Mike Anderson       Gone with the Wind      3  2011-01-09
+12    Sarah Martinez       Gone with the Wind      2  2011-01-22
+13    Sarah Martinez       Gone with the Wind      4  2011-01-27
+
+[14 rows x 4 columns]
+
 {% endhighlight %}
-
-                    name                    title  stars  ratingDate
-    0       Ashley White                     E.T.      3  2011-01-02
-    1    Brittany Harris  Raiders of the Lost Ark      2  2011-01-30
-    2    Brittany Harris  Raiders of the Lost Ark      4  2011-01-12
-    3    Brittany Harris       The Sound of Music      2  2011-01-20
-    4      Chris Jackson                     E.T.      2  2011-01-22
-    5      Chris Jackson  Raiders of the Lost Ark      4        None
-    6      Chris Jackson       The Sound of Music      3  2011-01-27
-    7       Daniel Lewis               Snow White      4        None
-    8   Elizabeth Thomas                   Avatar      3  2011-01-15
-    9   Elizabeth Thomas               Snow White      5  2011-01-19
-    10     James Cameron                   Avatar      5  2011-01-20
-    11     Mike Anderson       Gone with the Wind      3  2011-01-09
-    12    Sarah Martinez       Gone with the Wind      2  2011-01-22
-    13    Sarah Martinez       Gone with the Wind      4  2011-01-27
-    
-    [14 rows x 4 columns]
-
 
 ### Solution using Pandas.
 > Methods used : merge(inner), sort
 
-**In [9]:**
-
-{% highlight python %}
-# first merge all the three DFs
+{% highlight ipy %}
+In [9]: # first merge all the three DFs
 resDF = pandas.merge( movieDF, ratDF, \
                      on='mID', how='inner' )
 resDF = pandas.merge( resDF, rvwrDF,\
@@ -330,37 +291,32 @@ resDF.sort( ['name','title','stars'], inplace=True )
 resDF = resDF[ [ 'name', 'title', 'stars', 'ratingDate' ] ]\
 .reset_index(drop=True)
 print resDF
+                name                    title  stars  ratingDate
+0       Ashley White                     E.T.      3  2011-01-02
+1    Brittany Harris  Raiders of the Lost Ark      2  2011-01-30
+2    Brittany Harris  Raiders of the Lost Ark      4  2011-01-12
+3    Brittany Harris       The Sound of Music      2  2011-01-20
+4      Chris Jackson                     E.T.      2  2011-01-22
+5      Chris Jackson  Raiders of the Lost Ark      4        None
+6      Chris Jackson       The Sound of Music      3  2011-01-27
+7       Daniel Lewis               Snow White      4        None
+8   Elizabeth Thomas                   Avatar      3  2011-01-15
+9   Elizabeth Thomas               Snow White      5  2011-01-19
+10     James Cameron                   Avatar      5  2011-01-20
+11     Mike Anderson       Gone with the Wind      3  2011-01-09
+12    Sarah Martinez       Gone with the Wind      2  2011-01-22
+13    Sarah Martinez       Gone with the Wind      4  2011-01-27
+
+[14 rows x 4 columns]
+
 {% endhighlight %}
 
-                    name                    title  stars  ratingDate
-    0       Ashley White                     E.T.      3  2011-01-02
-    1    Brittany Harris  Raiders of the Lost Ark      2  2011-01-30
-    2    Brittany Harris  Raiders of the Lost Ark      4  2011-01-12
-    3    Brittany Harris       The Sound of Music      2  2011-01-20
-    4      Chris Jackson                     E.T.      2  2011-01-22
-    5      Chris Jackson  Raiders of the Lost Ark      4        None
-    6      Chris Jackson       The Sound of Music      3  2011-01-27
-    7       Daniel Lewis               Snow White      4        None
-    8   Elizabeth Thomas                   Avatar      3  2011-01-15
-    9   Elizabeth Thomas               Snow White      5  2011-01-19
-    10     James Cameron                   Avatar      5  2011-01-20
-    11     Mike Anderson       Gone with the Wind      3  2011-01-09
-    12    Sarah Martinez       Gone with the Wind      2  2011-01-22
-    13    Sarah Martinez       Gone with the Wind      4  2011-01-27
-    
-    [14 rows x 4 columns]
-
-
-## Question-6 : For all cases where the same reviewer rated the same movie twice
-and gave it a higher rating the second time, return the reviewer's name and the
-title of the movie.
+## Question-6 : For all cases where the same reviewer rated the same movie twice and gave it a higher rating the second time, return the reviewer's name and the title of the movie. 
 
 ### Solution using SQL.
 
-**In [10]:**
-
-{% highlight python %}
-#SQL query
+{% highlight ipy %}
+In [10]: #SQL query
 qry = """
         SELECT re1.name, mv.title FROM Reviewer re1
         INNER JOIN Rating ra1 ON ra1.rID = re1.rID
@@ -372,21 +328,18 @@ qry = """
 qDF = pandas.read_sql( qry, conn )
 # print the data
 print qDF
+             name               title
+0  Sarah Martinez  Gone with the Wind
+
+[1 rows x 2 columns]
+
 {% endhighlight %}
-
-                 name               title
-    0  Sarah Martinez  Gone with the Wind
-    
-    [1 rows x 2 columns]
-
 
 ### Solution using Pandas.
 > Methods used : selection, merge(inner,self)
 
-**In [11]:**
-
-{% highlight python %}
-# merge ratingDF on itself
+{% highlight ipy %}
+In [11]: # merge ratingDF on itself
 resDF = pandas.merge( ratDF, ratDF,\
                      on=['rID','mID'], how='inner')
 # Note in joins like the self join here, Pandas 
@@ -404,24 +357,19 @@ resDF = pandas.merge( resDF, rvwrDF,\
 # get the required cols
 resDF = resDF[ ['name', 'title'] ]
 print resDF
+             name               title
+0  Sarah Martinez  Gone with the Wind
+
+[1 rows x 2 columns]
+
 {% endhighlight %}
 
-                 name               title
-    0  Sarah Martinez  Gone with the Wind
-    
-    [1 rows x 2 columns]
-
-
-## Question-7 : For each movie that has at least one rating, find the highest
-number of stars that movie received. Return the movie title and number of stars.
-Sort by movie title.
+## Question-7 : For each movie that has at least one rating, find the highest number of stars that movie received. Return the movie title and number of stars. Sort by movie title.
 
 ### Solution using SQL
 
-**In [8]:**
-
-{% highlight python %}
-#SQL query
+{% highlight ipy %}
+In [8]: #SQL query
 qry = """
         SELECT mv.title, tab.max_stars FROM Movie mv
         INNER JOIN
@@ -435,26 +383,23 @@ qry = """
 qDF = pandas.read_sql( qry, conn )
 # print the data
 print qDF
+                     title  max_stars
+0                   Avatar          5
+1                     E.T.          3
+2       Gone with the Wind          4
+3  Raiders of the Lost Ark          4
+4               Snow White          5
+5       The Sound of Music          3
+
+[6 rows x 2 columns]
+
 {% endhighlight %}
-
-                         title  max_stars
-    0                   Avatar          5
-    1                     E.T.          3
-    2       Gone with the Wind          4
-    3  Raiders of the Lost Ark          4
-    4               Snow White          5
-    5       The Sound of Music          3
-    
-    [6 rows x 2 columns]
-
 
 ### Solution using Pandas.
 > Methods used : groupby, filter(), merge(inner), rename()
 
-**In [12]:**
-
-{% highlight python %}
-# Do a groupby operation on ratDF
+{% highlight ipy %}
+In [12]: # Do a groupby operation on ratDF
 ratGrps = ratDF.groupby( ['mID'] )
 # we'll use filter to implement a having type
 # operation in pandas, here we're using filter to
@@ -478,29 +423,24 @@ ratGrpMax = pandas.merge( ratGrpMax, movieDF,\
 # select the required cols
 ratGrpMax = ratGrpMax[ [ 'title', 'max_stars' ] ].sort( 'title' )
 print ratGrpMax
+                     title  max_stars
+5                   Avatar          5
+4                     E.T.          3
+0       Gone with the Wind          4
+3  Raiders of the Lost Ark          4
+1               Snow White          5
+2       The Sound of Music          3
+
+[6 rows x 2 columns]
+
 {% endhighlight %}
 
-                         title  max_stars
-    5                   Avatar          5
-    4                     E.T.          3
-    0       Gone with the Wind          4
-    3  Raiders of the Lost Ark          4
-    1               Snow White          5
-    2       The Sound of Music          3
-    
-    [6 rows x 2 columns]
-
-
-## Question-8 : For each movie, return the title and the 'rating spread', that
-is, the difference between highest and lowest ratings given to that movie. Sort
-by rating spread from highest to lowest, then by movie title.
+## Question-8 : For each movie, return the title and the 'rating spread', that is, the difference between highest and lowest ratings given to that movie. Sort by rating spread from highest to lowest, then by movie title.
 
 ### Solution using SQL.
 
-**In [9]:**
-
-{% highlight python %}
-#SQL query
+{% highlight ipy %}
+In [9]: #SQL query
 qry = """
         SELECT mv.title, tab.rat_spread FROM Movie mv
         INNER JOIN
@@ -513,26 +453,23 @@ qry = """
 qDF = pandas.read_sql( qry, conn )
 # print the data
 print qDF
+                     title  rat_spread
+0                   Avatar           2
+1       Gone with the Wind           2
+2  Raiders of the Lost Ark           2
+3                     E.T.           1
+4               Snow White           1
+5       The Sound of Music           1
+
+[6 rows x 2 columns]
+
 {% endhighlight %}
-
-                         title  rat_spread
-    0                   Avatar           2
-    1       Gone with the Wind           2
-    2  Raiders of the Lost Ark           2
-    3                     E.T.           1
-    4               Snow White           1
-    5       The Sound of Music           1
-    
-    [6 rows x 2 columns]
-
 
 ### Solution using Pandas.
 > Methods used : groupby, concat, rename, sort
 
-**In [13]:**
-
-{% highlight python %}
-# Group by mID
+{% highlight ipy %}
+In [13]: # Group by mID
 ratGrps = ratDF.groupby( ['mID'] )
 # Get max and min star values from groupby ops
 ratMax = ratDF.groupby(['mID'], sort=False)\
@@ -557,31 +494,24 @@ resDF = resDF[ [ 'title', 'rat_spread' ] ]\
         .sort('rat_spread', ascending=False)\
         .reset_index(drop=True)
 print resDF
+                     title  rat_spread
+0                   Avatar           2
+1  Raiders of the Lost Ark           2
+2       Gone with the Wind           2
+3                     E.T.           1
+4       The Sound of Music           1
+5               Snow White           1
+
+[6 rows x 2 columns]
+
 {% endhighlight %}
 
-                         title  rat_spread
-    0                   Avatar           2
-    1  Raiders of the Lost Ark           2
-    2       Gone with the Wind           2
-    3                     E.T.           1
-    4       The Sound of Music           1
-    5               Snow White           1
-    
-    [6 rows x 2 columns]
-
-
-## Question-9 : Find the difference between the average rating of movies
-released before 1980 and the average rating of movies released after 1980. (Make
-sure to calculate the average rating for each movie, then the average of those
-averages for movies before 1980 and movies after. Don't just calculate the
-overall average rating before and after 1980.)
+## Question-9 : Find the difference between the average rating of movies released before 1980 and the average rating of movies released after 1980. (Make sure to calculate the average rating for each movie, then the average of those averages for movies before 1980 and movies after. Don't just calculate the overall average rating before and after 1980.)
 
 ### Solution using SQL.
 
-**In [11]:**
-
-{% highlight python %}
-#SQL query
+{% highlight ipy %}
+In [11]: #SQL query
 qry = """
         SELECT MAX(tab2.rat_rel_date) - MIN(tab2.rat_rel_date) difference FROM
         ( SELECT AVG(avg_rat) rat_rel_date FROM
@@ -596,21 +526,18 @@ qry = """
 qDF = pandas.read_sql( qry, conn )
 # print the data
 print qDF
+   difference
+0    0.055567
+
+[1 rows x 1 columns]
+
 {% endhighlight %}
-
-       difference
-    0    0.055567
-    
-    [1 rows x 1 columns]
-
 
 ### Solution using Pandas.
 > Methods used : merge(inner), sort, groupby
 
-**In [14]:**
-
-{% highlight python %}
-# Merge ratDF and movieDF
+{% highlight ipy %}
+In [14]: # Merge ratDF and movieDF
 resDF = pandas.merge( movieDF, ratDF, \
                      on='mID', how='inner' )
 # Now make two new DFs one with movies
@@ -624,6 +551,6 @@ aftrGrps = afterDF.groupby(['mID'], sort=False)\
              ['stars'].mean()
 # get the mean of each series and get differences
 print bfrGrps.mean() - aftrGrps.mean()
-{% endhighlight %}
+0.0555555555556
 
-    0.0555555555556
+{% endhighlight %}
