@@ -1,18 +1,10 @@
 ---
 layout: post
-title: Equating SQL and Pandas (Part-1)
+title: "movie-rating-coreset"
 tags:
-    - Pandas
-    - SQL
+    - python
+    - notebook
 ---
-
-[Pandas](http://pandas.pydata.org/) is a really powerful data analysis library in python created by [Wes McKinney](http://blog.wesmckinney.com/). Pandas provides fast and robust data structures and methods to manipulate data and is especially great with relational or tabular data.
-
-A little while back I started learning Pandas and [Greg Reda's](http://www.gregreda.com/) blog posts [translating SQL to Pandas](http://www.gregreda.com/2013/01/23/translating-sql-to-pandas-part1/) helped me a lot in this process. Understanding pandas data structures and methods such as groupby, merge becomes easier once we start comparing them to similar statements in SQL (group by, join). Inspired by Greg's tutorials I started working on additional exercises for practice. I used assignments from [coursera's Introduction to databases](https://class.coursera.org/db) course and worked out both SQL queries and Pandas methods to solve the questions.
-
-This post covers the [first assignment](https://class.coursera.org/db/quiz/attempt?quiz_id=128).
-
-
 > SQL exercise questions from Coursera - Introduction to Databases course
 >> SQL Movie-Rating Query Exercises (core set)
 
@@ -627,3 +619,4 @@ print bfrGrps.mean() - aftrGrps.mean()
 {% endhighlight %}
 
     0.0555555555556
+
