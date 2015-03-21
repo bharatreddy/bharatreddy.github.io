@@ -61,5 +61,9 @@ app = Flask(__name__)
 @app.route("/")
 def starter():
     return render_template('index.html')
+
+if __name__ == "__main__":
+    app.debug=True
+    app.run()
 {% endhighlight %}    
 - We can create more mappings like above by changing the route. Refer the [project page](https://github.com/bharatreddy/cricstats) for a lot of additional functionality such as using data from MySQL to make d3.js visualizations.
