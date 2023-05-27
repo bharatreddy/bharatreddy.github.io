@@ -3,10 +3,8 @@ layout: page
 title: About
 ---
 
-I finished my PhD in space science in Dec, 2013 from the [SuperDARN lab](http://vt.superdarn.org/tiki-index.php) in Virginia Tech. 
-
-I constantly try to learn new tools and software by working on some open source projects. Some of my projects are discussed in this blog, few more are present in my [Github](https://github.com/bharatreddy) account. Over the last few years I taught myself Python, Javascript, JQUERY and visualization tools such as d3.js, by working on some projects. The latest tool I'm playing with is the awesome Pandas (Python) library. 
+I am currently a research assistant professor in the [ECE Department](https://ece.vt.edu/) at Virginia Tech, where I conduct research on the near-Earth space environment and teach undergraduate and graduate courses in the electromagnetics area. My research is focused on Sub Auroral Polarization Streams (SAPS), High Frequency radio wave propagation, dynamics of mid-latitude sporadic-E and electrified MSTIDs. Some of my  recent publications on these topics can be found [here](https://scholar.google.com/citations?user=-7i6xcAAAAAJ&hl=en). Please see my [LinkedIn profile](http://www.linkedin.com/pub/bharat-kunduri/64/14a/9a0/) for additional details on my professional preparation.
 
 Drop me an [email](mailto:bharatr@vt.edu) if anything interests you.
 
-Thanks for reading!
+Thanks!
